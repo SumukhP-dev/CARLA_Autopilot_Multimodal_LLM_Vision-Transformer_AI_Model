@@ -1,0 +1,6 @@
+pydub
+carla
+openai
+opencv-python
+numpy
+SpeechRecognition

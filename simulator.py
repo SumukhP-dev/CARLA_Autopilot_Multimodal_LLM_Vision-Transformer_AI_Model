@@ -2,22 +2,31 @@ import glob
 import os
 import sys
 
+import carla
+import pygame  # We will be using this for manual control
+
+from cameraTextProcessing import cameraTextProcessing
+from player import Player
+
 try:
-    sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (
-        sys.version_info.major,
-        sys.version_info.minor,
-        'win-amd64' if os.name == 'nt' else 'linux-x86_64'))[0])
+    sys.path.append(
+        glob.glob(
+            "../carla/dist/carla-*%d.%d-%s.egg"
+            % (
+                sys.version_info.major,
+                sys.version_info.minor,
+                "win-amd64" if os.name == "nt" else "linux-x86_64",
+            )
+        )[0]
+    )
 except IndexError:
     pass
-import carla
-import random
-import pygame # We will be using this for manual control
 
 # server running on our system with default port 2000
-client = carla.Client('localhost', 2000)
+client = carla.Client("localhost", 2000)
 client.set_timeout(5.0)
 
-world = client.load_world('Town01')
+world = client.load_world("Town01")
 spectator = world.get_spectator()
 
 # I have changed the weather to a clear noon.
@@ -25,11 +34,11 @@ weather = carla.WeatherParameters(
     cloudiness=0.0,
     precipitation=0.0,
     sun_altitude_angle=10.0,
-    sun_azimuth_angle = 90.0,
-    precipitation_deposits = 0.0,
-    wind_intensity = 0.0,
-    fog_density = 0.0,
-    wetness = 0.0,
+    sun_azimuth_angle=90.0,
+    precipitation_deposits=0.0,
+    wind_intensity=0.0,
+    fog_density=0.0,
+    wetness=0.0,
 )
 world.set_weather(weather)
 
@@ -44,7 +53,7 @@ spawn_points = world.get_map().get_spawn_points()
 # I am spawning an Audi etron here. You can check out the blueprint library
 # to spawn your vehicle of choice. Also we spawn in a random safe point 79
 
-vehicle_bp = bp_lib.find('vehicle.audi.etron')
+vehicle_bp = bp_lib.find("vehicle.audi.etron")
 ego_vehicle = world.try_spawn_actor(vehicle_bp, spawn_points[79])
 
 # Let's position the spectator just behind the vehicle
@@ -53,7 +62,10 @@ ego_vehicle = world.try_spawn_actor(vehicle_bp, spawn_points[79])
 # ego_vehicle
 
 spectator = world.get_spectator()
-transform = carla.Transform(ego_vehicle.get_transform().transform(carla.Location(x=-4,z=2.5)),ego_vehicle.get_transform().rotation)
+transform = carla.Transform(
+    ego_vehicle.get_transform().transform(carla.Location(x=-4, z=2.5)),
+    ego_vehicle.get_transform().rotation,
+)
 spectator.set_transform(transform)
 
 # If you want to position the your_actor with just the coordinates,
@@ -64,7 +76,7 @@ spectator.set_transform(transform)
 # your_actor.set_transform(transform)
 
 # Let's add the bus.
-vehicle_bp_bus = bp_lib.find('vehicle.mitsubishi.fusorosa')
+vehicle_bp_bus = bp_lib.find("vehicle.mitsubishi.fusorosa")
 
 vehicle_bus = world.try_spawn_actor(vehicle_bp_bus, spawn_points[80])
 location = ego_vehicle.get_location()
@@ -81,16 +93,27 @@ ego_vehicle.set_autopilot(False)
 ## Vehicle PHYSICS property
 
 # Create Wheels Physics Control
-front_left_wheel  = carla.WheelPhysicsControl(tire_friction=2.0, damping_rate=1.5, max_steer_angle=70.0, long_stiff_value=1000)
-front_right_wheel = carla.WheelPhysicsControl(tire_friction=2.0, damping_rate=1.5, max_steer_angle=70.0, long_stiff_value=1000)
-rear_left_wheel   = carla.WheelPhysicsControl(tire_friction=3.0, damping_rate=1.5, max_steer_angle=0.0,  long_stiff_value=1000)
-rear_right_wheel  = carla.WheelPhysicsControl(tire_friction=3.0, damping_rate=1.5, max_steer_angle=0.0,  long_stiff_value=1000) # Reducing friction increases idle throttle
+front_left_wheel = carla.WheelPhysicsControl(
+    tire_friction=2.0, damping_rate=1.5, max_steer_angle=70.0, long_stiff_value=1000
+)
+front_right_wheel = carla.WheelPhysicsControl(
+    tire_friction=2.0, damping_rate=1.5, max_steer_angle=70.0, long_stiff_value=1000
+)
+rear_left_wheel = carla.WheelPhysicsControl(
+    tire_friction=3.0, damping_rate=1.5, max_steer_angle=0.0, long_stiff_value=1000
+)
+rear_right_wheel = carla.WheelPhysicsControl(
+    tire_friction=3.0, damping_rate=1.5, max_steer_angle=0.0, long_stiff_value=1000
+)  # Reducing friction increases idle throttle
 
 wheels = [front_left_wheel, front_right_wheel, rear_left_wheel, rear_right_wheel]
 
 # Change Vehicle Physics Control parameters of the vehicle
 physics_control = ego_vehicle.get_physics_control()
-physics_control.torque_curve = [carla.Vector2D(x=0, y=400), carla.Vector2D(x=1300, y=600)]
+physics_control.torque_curve = [
+    carla.Vector2D(x=0, y=400),
+    carla.Vector2D(x=1300, y=600),
+]
 physics_control.max_rpm = 10000
 physics_control.moi = 1.0
 physics_control.damping_rate_full_throttle = 0.0
@@ -99,7 +122,11 @@ physics_control.gear_switch_time = 0.5
 physics_control.clutch_strength = 10
 physics_control.mass = 10000
 physics_control.drag_coefficient = 0.25
-physics_control.steering_curve = [carla.Vector2D(x=0, y=1), carla.Vector2D(x=100, y=1), carla.Vector2D(x=300, y=1)]
+physics_control.steering_curve = [
+    carla.Vector2D(x=0, y=1),
+    carla.Vector2D(x=100, y=1),
+    carla.Vector2D(x=300, y=1),
+]
 physics_control.use_sweep_wheel_collision = True
 physics_control.wheels = wheels
 
@@ -121,23 +148,29 @@ done = False
 
 player = Player(world, ego_vehicle)
 
-# Make movements for ego vehicle
-if left and stop:
-    player.do_left_lane_change()
-    ego_vehicle.apply_ackermann_control(carla.VehicleAckermannControl(speed=0, steer=0.0))
-
-elif right and stop:
-    player.do_right_lane_change()
-    ego_vehicle.apply_ackermann_control(carla.VehicleAckermannControl(speed=0, steer=0.0))
-
-elif right:
-    player.do_right_lane_change()
-
-elif left:
-    player.do_left_lane_change()
-
-elif stop:
-    ego_vehicle.apply_ackermann_control(carla.VehicleAckermannControl(speed=0, steer=0.0))
+# # Make movements for ego vehicle
+# if left and stop:
+#     player.do_left_lane_change()
+#     ego_vehicle.apply_ackermann_control(
+#         carla.VehicleAckermannControl(speed=0, steer=0.0)
+#     )
+#
+# elif right and stop:
+#     player.do_right_lane_change()
+#     ego_vehicle.apply_ackermann_control(
+#         carla.VehicleAckermannControl(speed=0, steer=0.0)
+#     )
+#
+# elif right:
+#     player.do_right_lane_change()
+#
+# elif left:
+#     player.do_left_lane_change()
+#
+# elif stop:
+#     ego_vehicle.apply_ackermann_control(
+#         carla.VehicleAckermannControl(speed=0, steer=0.0)
+#     )
 
 while not done:
 
@@ -147,8 +180,10 @@ while not done:
 
     # keep moving the spectator to keep up with ego vehicle
     spectator = world.get_spectator()
-    transform = carla.Transform(ego_vehicle.get_transform().transform(carla.Location(x=-4, z=2.5)),
-                                ego_vehicle.get_transform().rotation)
+    transform = carla.Transform(
+        ego_vehicle.get_transform().transform(carla.Location(x=-4, z=2.5)),
+        ego_vehicle.get_transform().rotation,
+    )
     spectator.set_transform(transform)
 
     # Update the display and check for the quit event
