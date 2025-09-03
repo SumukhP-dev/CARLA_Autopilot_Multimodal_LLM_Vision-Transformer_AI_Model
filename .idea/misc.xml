@@ -4,5 +4,5 @@
     <option name="enabledOnSave" value="true" />
     <option name="sdkName" value="Python 3.9 (Carla-Lane-Detection-Dataset-Generation-master)" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.9 (Carla-Lane-Detection-Dataset-Generation-master)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.7 (Autopilot_LLM)" project-jdk-type="Python SDK" />
 </project>

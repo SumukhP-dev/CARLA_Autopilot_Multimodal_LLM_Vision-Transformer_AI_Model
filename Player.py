@@ -16,7 +16,7 @@ import time
 import math
 import numpy as np
 import random
-from controller import VehiclePIDController
+from Controller import VehiclePIDController
 
 VEHICLE_VEL = 5
 class Player:

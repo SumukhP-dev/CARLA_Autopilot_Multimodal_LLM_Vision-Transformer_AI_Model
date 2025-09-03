@@ -1,16 +1,29 @@
 import carla
 import cv2
 import numpy as np
+import os
+import keras
+
+os.environ["KERAS_BACKEND"] = "jax"
+model = keras.models.load_model("hf://Sumukhdev/carla_image_captioning_model")
+
+def rgb_callback(image, data_dict):
+    img = np.reshape(
+        np.copy(image.raw_data), (image.height, image.width, 4)
+    )  # Reshaping with alpha channel
+    img[:, :, 3] = 255  # Setting the alpha to 255
+    data_dict["rgb_image"] = img
 
 
-class cameraTextProcessing:
+class CameraTextProcessing:
     def __init__(self, camera_bp, ego_vehicle, bp_lib, world):
         self.ego_vehicle = ego_vehicle
         self.camera_bp = camera_bp
         self.bp_lib = bp_lib
         self.world = world
+        self.current_image = None
 
-    def initialCamera(self):
+    def initial_camera(self):
         camera_bp = self.bp_lib.find("sensor.camera.rgb")
         camera_init_trans = carla.Transform(carla.Location(x=-0.1, z=1.7))
         camera = self.world.spawn_actor(
@@ -22,17 +35,21 @@ class cameraTextProcessing:
 
         sensor_data = {"rgb_image": np.zeros((image_h, image_w, 4))}
 
-        camera.listen(lambda image: self.rgb_callback(image, sensor_data))
+        camera.listen(lambda image: rgb_callback(image, sensor_data))
 
         while True:
             # Output camera display onto an OpenCV Window
             cv2.imshow("RGB_Image", sensor_data["rgb_image"])
+            self.current_image = sensor_data["rgb_image"]
             if cv2.waitKey(1) == ord("q"):
                 break
 
-    def rgb_callback(image, data_dict):
-        img = np.reshape(
-            np.copy(image.raw_data), (image.height, image.width, 4)
-        )  # Reshaping with alpha channel
-        img[:, :, 3] = 255  # Setting the alpha to 255
-        data_dict["rgb_image"] = img
+    def get_scenario_from_image(self):
+        if self.current_image is None:
+            image_bytes = self.current_image.tobytes()
+
+            scenario = model.predict(image_bytes)
+
+            return scenario
+        else:
+            return ""

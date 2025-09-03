@@ -5,8 +5,10 @@ import sys
 import carla
 import pygame  # We will be using this for manual control
 
-from cameraTextProcessing import cameraTextProcessing
-from player import Player
+from AudioConversion import convert
+from CameraTextProcessing import CameraTextProcessing
+from Player import Player
+from TextToInstructionsConverter import TextToInstructionsConverter
 
 try:
     sys.path.append(
@@ -26,7 +28,7 @@ except IndexError:
 client = carla.Client("localhost", 2000)
 client.set_timeout(5.0)
 
-world = client.load_world("Town01")
+world = client.load_world("Town03")
 spectator = world.get_spectator()
 
 # I have changed the weather to a clear noon.
@@ -61,7 +63,6 @@ ego_vehicle = world.try_spawn_actor(vehicle_bp, spawn_points[79])
 # to position the spectator by going 4 metres behind and 2.5 metres above the
 # ego_vehicle
 
-spectator = world.get_spectator()
 transform = carla.Transform(
     ego_vehicle.get_transform().transform(carla.Location(x=-4, z=2.5)),
     ego_vehicle.get_transform().rotation,
@@ -146,37 +147,32 @@ control = ego_vehicle.get_control()
 clock = pygame.time.Clock()
 done = False
 
-player = Player(world, ego_vehicle)
+# Find a camera blueprint
+camera_bp = bp_lib.find('sensor.camera.rgb')
 
-# # Make movements for ego vehicle
-# if left and stop:
-#     player.do_left_lane_change()
-#     ego_vehicle.apply_ackermann_control(
-#         carla.VehicleAckermannControl(speed=0, steer=0.0)
-#     )
-#
-# elif right and stop:
-#     player.do_right_lane_change()
-#     ego_vehicle.apply_ackermann_control(
-#         carla.VehicleAckermannControl(speed=0, steer=0.0)
-#     )
-#
-# elif right:
-#     player.do_right_lane_change()
-#
-# elif left:
-#     player.do_left_lane_change()
-#
-# elif stop:
-#     ego_vehicle.apply_ackermann_control(
-#         carla.VehicleAckermannControl(speed=0, steer=0.0)
-#     )
+player = Player(world, ego_vehicle)
 
 while not done:
 
     # Apply the control to the ego vehicle and tick the simulation
     ego_vehicle.apply_control(control)
     world.tick()
+
+    text_of_audio = convert("audio.mp3")
+
+    camera_text_processing = CameraTextProcessing(camera_bp, ego_vehicle, bp_lib, world)
+    camera_text_processing.initial_camera()
+    text_of_scene = camera_text_processing.get_scenario_from_image()
+
+    text_to_instructions_converter = TextToInstructionsConverter()
+
+    speed_mps = ego_vehicle.state.speed
+    steer_angle = ego_vehicle.state.steer
+
+    # Make movements for ego vehicle
+    speed, steer = text_to_instructions_converter.convert(text_of_audio, text_of_scene, speed_mps, steer_angle)
+
+    ego_vehicle.apply_ackermann_control(carla.VehicleAckermannControl(speed=speed, steer=steer))
 
     # keep moving the spectator to keep up with ego vehicle
     spectator = world.get_spectator()
