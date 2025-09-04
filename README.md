@@ -10,6 +10,13 @@ A Python program uses a vision transformer model to convert sensor images to tex
 
 ---
 
+## Important Links
+- [Data Generation Repository](https://github.com/SumukhP-dev/Carla-Lane-Detection-Dataset-Generation)
+- [Huggingface Image To Text Dataset](https://huggingface.co/datasets/Sumukhdev/carla_image_to_text_dataset)
+- [Huggingface Image Captioning Model](https://huggingface.co/Sumukhdev/carla_image_captioning_model)
+
+---
+
 ## Features (What You’ll See)  
 - A main car will be spawned and will try to navigate traffic without crashing
 - There will be multiple lanes and the car will navigate through said lanes to maintain speed
