@@ -5,10 +5,10 @@ import sys
 import carla
 import pygame  # We will be using this for manual control
 
-from AudioConversion import convert
-from CameraTextProcessing import CameraTextProcessing
-from Player import Player
-from TextToInstructionsConverter import TextToInstructionsConverter
+from audio_conversion import convert
+from camera_text_processing import CameraTextProcessing
+from player import Player
+from text_to_instructions_converter import TextToInstructionsConverter
 
 def main():
     try:

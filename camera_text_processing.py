@@ -2,6 +2,7 @@ import carla
 import cv2
 import numpy as np
 from tensorflow import keras
+from custom_layers import Patches, PatchEncoder
 
 model = keras.models.load_model("vision_transformer_model/model/my_model.keras")
 
