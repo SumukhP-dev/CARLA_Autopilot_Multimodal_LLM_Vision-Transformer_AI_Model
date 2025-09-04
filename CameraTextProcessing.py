@@ -1,11 +1,9 @@
 import carla
 import cv2
 import numpy as np
-import os
-import keras
+from tensorflow import keras
 
-os.environ["KERAS_BACKEND"] = "jax"
-model = keras.models.load_model("hf://Sumukhdev/carla_image_captioning_model")
+model = keras.models.load_model("vision_transformer_model/model/my_model.keras")
 
 def rgb_callback(image, data_dict):
     img = np.reshape(
