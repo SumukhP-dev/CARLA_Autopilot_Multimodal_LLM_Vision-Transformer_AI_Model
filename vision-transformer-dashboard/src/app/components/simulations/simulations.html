@@ -1,0 +1,15 @@
+<div class="simulations">
+  <h2>CARLA Simulation Results</h2>
+  <table>
+    <tr>
+      <th>Environment</th>
+      <th>Collisions</th>
+      <th>Safe Runs</th>
+    </tr>
+    <tr *ngFor="let env of environments">
+      <td>{{ env.name }}</td>
+      <td>{{ env.collisions }}</td>
+      <td>{{ env.safeRuns }}</td>
+    </tr>
+  </table>
+</div>
