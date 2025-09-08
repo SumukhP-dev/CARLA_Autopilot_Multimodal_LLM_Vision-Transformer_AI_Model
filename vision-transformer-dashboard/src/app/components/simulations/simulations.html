@@ -1,15 +1,111 @@
 <div class="simulations">
   <h2>CARLA Simulation Results</h2>
-  <table>
-    <tr>
-      <th>Environment</th>
-      <th>Collisions</th>
-      <th>Safe Runs</th>
-    </tr>
-    <tr *ngFor="let env of environments">
-      <td>{{ env.name }}</td>
-      <td>{{ env.collisions }}</td>
-      <td>{{ env.safeRuns }}</td>
-    </tr>
-  </table>
+
+  <!-- Summary Statistics Cards -->
+  <div class="stats-summary">
+    <div class="stat-card">
+      <h4>Total Simulations</h4>
+      <p class="stat-value">{{ totalSimulations }}</p>
+    </div>
+    <div class="stat-card collision-card">
+      <h4>Total Collisions</h4>
+      <p class="stat-value">{{ totalCollisions }}</p>
+    </div>
+    <div class="stat-card safe-card">
+      <h4>Total Safe Runs</h4>
+      <p class="stat-value">{{ totalSafeRuns }}</p>
+    </div>
+    <div class="stat-card safety-rate-card">
+      <h4>Overall Safety Rate</h4>
+      <p class="stat-value">{{ overallSafetyRate | number : '1.1-1' }}%</p>
+    </div>
+  </div>
+
+  <!-- Bar Chart -->
+  <div class="chart-container">
+    <h3>Environment Performance Comparison</h3>
+    <ngx-charts-bar-vertical-2d
+      [results]="barChartData"
+      [gradient]="gradient"
+      [xAxis]="showXAxis"
+      [yAxis]="showYAxis"
+      [legend]="showLegend"
+      [showXAxisLabel]="showXAxisLabel"
+      [showYAxisLabel]="showYAxisLabel"
+      [xAxisLabel]="xAxisLabel"
+      [yAxisLabel]="yAxisLabel"
+      [animations]="animations"
+      [scheme]="colorScheme"
+      (select)="onSelect($event)"
+    >
+    </ngx-charts-bar-vertical-2d>
+  </div>
+
+  <!-- Pie Chart and Safety Scores -->
+  <div class="chart-row">
+    <div class="chart-column">
+      <h3>Overall Performance Distribution</h3>
+      <ngx-charts-pie-chart
+        [results]="pieChartData"
+        [gradient]="gradient"
+        [legend]="showLegend"
+        [animations]="animations"
+        [scheme]="pieColorScheme"
+        [labels]="true"
+        [doughnut]="true"
+        (select)="onSelect($event)"
+      >
+      </ngx-charts-pie-chart>
+    </div>
+
+    <div class="chart-column">
+      <h3>Safety Scores by Environment</h3>
+      <div class="safety-scores">
+        <div class="score-item" *ngFor="let env of environments">
+          <div class="score-header">
+            <span class="env-name">{{ env.name }}</span>
+            <span class="score-value" [ngClass]="getSafetyClass(getSafetyScore(env))">
+              {{ getSafetyScore(env) }}%
+            </span>
+          </div>
+          <div class="score-bar">
+            <div
+              class="score-fill"
+              [style.width.%]="getSafetyScore(env)"
+              [ngClass]="getSafetyClass(getSafetyScore(env))"
+            ></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detailed Table -->
+  <div class="detailed-table">
+    <h3>Detailed Results</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Environment</th>
+          <th>Collisions</th>
+          <th>Safe Runs</th>
+          <th>Total Runs</th>
+          <th>Safety Score</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let env of environments">
+          <td>{{ env.name }}</td>
+          <td class="collision-count">{{ env.collisions }}</td>
+          <td class="safe-count">{{ env.safeRuns }}</td>
+          <td>{{ env.collisions + env.safeRuns }}</td>
+          <td>
+            <span class="safety-badge" [ngClass]="getSafetyClass(getSafetyScore(env))">
+              {{ getSafetyScore(env) }}%
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 </div>

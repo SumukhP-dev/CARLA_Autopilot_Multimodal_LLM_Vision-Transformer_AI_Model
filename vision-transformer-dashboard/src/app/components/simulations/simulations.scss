@@ -1,0 +1,319 @@
+.simulations {
+  padding: 2rem;
+  background-color: #f5f7fa;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+
+  h2 {
+    color: #2c3e50;
+    font-size: 2.5rem;
+    margin-bottom: 2rem;
+    text-align: center;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+
+  h3 {
+    color: #34495e;
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+  }
+
+  // Statistics Summary Cards
+  .stats-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+
+    .stat-card {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      }
+
+      &:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      h4 {
+        color: #718096;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+      }
+
+      .stat-value {
+        color: #2d3748;
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin: 0;
+        line-height: 1;
+      }
+
+      &.collision-card {
+        &::before {
+          background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
+        }
+        .stat-value {
+          color: #e74c3c;
+        }
+      }
+
+      &.safe-card {
+        &::before {
+          background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+        }
+        .stat-value {
+          color: #27ae60;
+        }
+      }
+
+      &.safety-rate-card {
+        &::before {
+          background: linear-gradient(90deg, #fa709a 0%, #fee140 100%);
+        }
+        .stat-value {
+          color: #2980b9;
+        }
+      }
+    }
+  }
+
+  // Chart Containers
+  .chart-container {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 3rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+
+    ngx-charts-bar-vertical-2d {
+      display: flex;
+    }
+  }
+
+  // Chart Row Layout
+  .chart-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 3rem;
+
+    @media (max-width: 968px) {
+      grid-template-columns: 1fr;
+    }
+
+    .chart-column {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+
+      ngx-charts-pie-chart {
+        display: block;
+        height: 350px;
+      }
+    }
+  }
+
+  // Safety Scores Section - FIXED PROGRESS BARS
+  .safety-scores {
+    .score-item {
+      margin-bottom: 2rem;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+
+      .score-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+
+        .env-name {
+          font-weight: 600;
+          color: #4a5568;
+          font-size: 1.1rem;
+        }
+
+        .score-value {
+          font-weight: 700;
+          font-size: 1.25rem;
+          padding: 0.375rem 1rem;
+          border-radius: 20px;
+          transition: all 0.3s ease;
+
+          &.safety-high {
+            color: #059862;
+            background-color: #d1fae5;
+            border: 1px solid #a7f3d0;
+          }
+
+          &.safety-medium {
+            color: #d97706;
+            background-color: #fed7aa;
+            border: 1px solid #fdba74;
+          }
+
+          &.safety-low {
+            color: #dc2626;
+            background-color: #fee2e2;
+            border: 1px solid #fca5a5;
+          }
+        }
+      }
+
+      .score-bar {
+        width: 100%;
+        height: 16px;
+        background-color: #e5e7eb;
+        border-radius: 8px;
+        overflow: hidden;
+        position: relative;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+
+        .score-fill {
+          height: 100%;
+          border-radius: 8px;
+          transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+          position: relative;
+          min-width: 0;
+          max-width: 100%;
+
+          // Ensure the width animation works
+          will-change: width;
+
+          &.safety-high {
+            background: linear-gradient(90deg, #059862 0%, #10b981 50%, #34d399 100%);
+            box-shadow: 0 2px 4px rgba(5, 152, 98, 0.4);
+
+            &::after {
+              background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.3),
+                transparent
+              );
+              animation: shimmer 2s infinite;
+            }
+          }
+
+          &.safety-medium {
+            background: linear-gradient(90deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%);
+            box-shadow: 0 2px 4px rgba(217, 119, 6, 0.4);
+          }
+
+          &.safety-low {
+            background: linear-gradient(90deg, #dc2626 0%, #ef4444 50%, #f87171 100%);
+            box-shadow: 0 2px 4px rgba(220, 38, 38, 0.4);
+
+            // Add pulsing effect for low scores
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+          }
+
+          // Overlay shine effect
+          &::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transform: translateX(-100%);
+          }
+        }
+      }
+    }
+  }
+
+  // Responsive Design
+  @media (max-width: 768px) {
+    padding: 1rem;
+
+    h2 {
+      font-size: 2rem;
+    }
+
+    .stats-summary {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    .chart-container,
+    .chart-column,
+    .detailed-table {
+      padding: 1.5rem;
+    }
+
+    .detailed-table {
+      overflow-x: auto;
+
+      table {
+        min-width: 500px;
+      }
+    }
+  }
+
+  // Animations
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .stat-card,
+  .chart-container,
+  .chart-column,
+  .detailed-table {
+    animation: fadeIn 0.6s ease-out forwards;
+
+    @for $i from 1 through 10 {
+      &:nth-child(#{$i}) {
+        animation-delay: #{$i * 0.1}s;
+      }
+    }
+  }
+}
+
+// Global chart styling overrides
+:host ::ng-deep {
+  .ngx-charts {
+    text {
+      fill: #4a5568 !important;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    }
+
+    .gridline-path {
+      stroke: #e2e8f0 !important;
+    }
+
+    .axis-label {
+      font-size: 12px !important;
+    }
+  }
+}
