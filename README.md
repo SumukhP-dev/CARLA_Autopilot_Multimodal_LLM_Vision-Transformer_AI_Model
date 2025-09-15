@@ -26,6 +26,7 @@ A Python program uses a vision transformer model to convert sensor images to tex
 ## Tech Stack  
 - **Language**: Python
 - **IDE**: PyCharm
+- **Testing**: Jasmine/Karma
 
 ---
 
