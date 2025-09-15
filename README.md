@@ -1,4 +1,4 @@
-# CARLA Autopilot LLM
+# CARLA Autopilot Multimodal LLM/Vision Transformer Model
 A Python program uses a vision transformer model to convert sensor images to text and convert audio files to text to prompt a Gemini model to give directions to the car. 
 
 ---
