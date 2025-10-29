@@ -3,7 +3,7 @@
 from collections import deque
 import math
 import numpy as np
-import carla
+# CARLA will be imported after path setup in main script
 from misc import get_speed
 
 

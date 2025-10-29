@@ -2,7 +2,7 @@
 
 import math
 import numpy as np
-import carla
+# CARLA will be imported after path setup in main script
 
 
 def draw_waypoints(world, waypoints, z=0.5):
@@ -28,6 +28,7 @@ def get_speed(vehicle):
         :param vehicle: the vehicle for which speed is calculated
         :return: speed as a float in Km/h
     """
+    import carla  # Import here after path setup
     vel = vehicle.get_velocity()
 
     return 3.6 * math.sqrt(vel.x**2 + vel.y**2 + vel.z**2)

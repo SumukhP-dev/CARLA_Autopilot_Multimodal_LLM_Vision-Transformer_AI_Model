@@ -11,7 +11,7 @@ try:
 except IndexError:
     pass
 
-import carla
+# CARLA will be imported after path setup in main script
 import time
 import math
 import numpy as np

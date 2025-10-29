@@ -8,3 +8,4 @@ SpeechRecognition
 pygame
 tensorflow
 ffmpeg-downloader
+google-generativeai

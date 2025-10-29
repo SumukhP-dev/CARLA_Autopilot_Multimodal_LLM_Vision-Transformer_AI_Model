@@ -40,7 +40,7 @@ class Patches(layers.Layer):
 
 @keras.saving.register_keras_serializable()
 class PatchEncoder(layers.Layer):
-    def __init__(self, num_patches=None, projection_dim=None, **kwargs):
+    def __init__(self, num_patches=144, projection_dim=64, **kwargs):
         super().__init__(**kwargs)
         self.num_patches = num_patches
         self.projection_dim = projection_dim
@@ -60,6 +60,13 @@ class PatchEncoder(layers.Layer):
         projected_patches = self.projection(patch)
         encoded = projected_patches + self.position_embedding(positions)
         return encoded
+
+    def compute_output_spec(self, input_spec):
+        return keras.KerasTensor(
+            shape=(input_spec.shape[0], self.num_patches, self.projection_dim),
+            dtype=input_spec.dtype,
+            name=self.name
+        )
 
     def get_config(self):
         config = super().get_config()

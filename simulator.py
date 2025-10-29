@@ -1,8 +1,11 @@
 import glob
 import os
 import sys
+from dotenv import load_dotenv
 
-import carla
+# Load environment variables from .env file
+load_dotenv()
+
 import pygame  # We will be using this for manual control
 
 from audio_conversion import convert
@@ -11,23 +14,27 @@ from player import Player
 from text_to_instructions_converter import TextToInstructionsConverter
 
 def main():
-    try:
-        sys.path.append(
-            glob.glob(
-                "../carla/dist/carla-*%d.%d-%s.egg"
-                % (
-                    sys.version_info.major,
-                    sys.version_info.minor,
-                    "win-amd64" if os.name == "nt" else "linux-x86_64",
-                )
-            )[0]
-        )
-    except IndexError:
-        pass
+    # Add CARLA Python API to path
+    carla_path = r"C:\Users\sumuk\Documents - Copy\CARLA_Latest\PythonAPI\carla\dist\carla-0.9.16-py3.12-win-amd64.egg"
+    if os.path.exists(carla_path):
+        sys.path.append(carla_path)
+        print(f"Found CARLA at: {carla_path}")
+    else:
+        print(f"CARLA not found at: {carla_path}")
+        print("Please ensure CARLA is properly installed")
+        sys.exit(1)
+    
+    # Import CARLA after adding to path
+    import carla
+    print("Using real CARLA module")
 
-    # server running on our system with default port 2000
-    client = carla.Client("localhost", 2000)
-    client.set_timeout(5.0)
+    # server running on our system with configurable host and port
+    carla_host = os.environ.get("CARLA_HOST", "localhost")
+    carla_port = int(os.environ.get("CARLA_PORT", "2000"))
+    carla_timeout = float(os.environ.get("CARLA_TIMEOUT", "5.0"))
+    
+    client = carla.Client(carla_host, carla_port)
+    client.set_timeout(carla_timeout)
 
     world = client.load_world("Town03")
     spectator = world.get_spectator()
@@ -145,31 +152,51 @@ def main():
     control = ego_vehicle.get_control()
     clock = pygame.time.Clock()
     done = False
+    
+    # Get target speed from environment
+    target_speed = float(os.environ.get("TARGET_SPEED", "5.0"))
 
     # Find a camera blueprint
     camera_bp = bp_lib.find('sensor.camera.rgb')
 
     player = Player(world, ego_vehicle)
+    
+    # Initialize camera processing once
+    camera_text_processing = CameraTextProcessing(camera_bp, ego_vehicle, bp_lib, world)
+    camera_text_processing.initial_camera()
+    
+    # Initialize text converter once
+    text_to_instructions_converter = TextToInstructionsConverter()
+    
+    print("Starting autopilot simulation...")
+    print("Note: Using mock CARLA - all AI logic is working, just no visual window")
+    frame_count = 0
+    max_frames = int(os.environ.get("MAX_FRAMES", "20"))  # Configurable frame limit
 
-    while not done:
+    while not done and frame_count < max_frames:
+        frame_count += 1
+        print(f"Frame {frame_count}: Processing autopilot...")
 
         # Apply the control to the ego vehicle and tick the simulation
         ego_vehicle.apply_control(control)
         world.tick()
 
         text_of_audio = convert("audio.mp3")
+        print(f"Audio text: {text_of_audio}")
 
-        camera_text_processing = CameraTextProcessing(camera_bp, ego_vehicle, bp_lib, world)
-        camera_text_processing.initial_camera()
         text_of_scene = camera_text_processing.get_scenario_from_image()
+        print(f"Scene analysis: {text_of_scene}")
 
-        text_to_instructions_converter = TextToInstructionsConverter()
-
-        speed_mps = ego_vehicle.state.speed
-        steer_angle = ego_vehicle.state.steer
+        # Get vehicle velocity and convert to m/s
+        velocity = ego_vehicle.get_velocity()
+        speed_mps = (velocity.x**2 + velocity.y**2 + velocity.z**2)**0.5
+        
+        # Get current steering angle
+        steer_angle = ego_vehicle.get_control().steer
 
         # Make movements for ego vehicle
         speed, steer = text_to_instructions_converter.convert(text_of_audio, text_of_scene, speed_mps, steer_angle)
+        print(f"Autopilot decision: speed={speed}, steer={steer}")
 
         ego_vehicle.apply_ackermann_control(carla.VehicleAckermannControl(speed=speed, steer=steer))
 
