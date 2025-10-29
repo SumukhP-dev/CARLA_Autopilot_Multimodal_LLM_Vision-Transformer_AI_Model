@@ -1,1 +1,37 @@
+﻿# Python
+.venv/
+.venv*/
+venv/
+ENV/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
 .env
+.env.*
+
+# Node / Angular
+vision-transformer-dashboard/node_modules/
+vision-transformer-dashboard/**/node_modules/
+vision-transformer-dashboard/dist/
+vision-transformer-dashboard/.angular/
+
+# OS/IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Large model/artifacts
+vision_transformer_model/model/*.h5
+vision_transformer_model/model/*.pt
+vision_transformer_model/model/*.onnx
+vision_transformer_model/model/*.pb
+vision_transformer_model/model/*.tflite
+*.keras
+
+# CARLA caches
+**/Carla/Maps/**
