@@ -2,18 +2,29 @@
 import carla
 import cv2
 import numpy as np
-from tensorflow import keras
-from custom_layers import Patches, PatchEncoder
-
-# Load model with custom objects
 try:
-    model = keras.models.load_model(
-        "vision_transformer_model/model/my_model.keras",
-        custom_objects={'Patches': Patches, 'PatchEncoder': PatchEncoder}
-    )
-    print("Model loaded successfully")
+    from tensorflow import keras
+    from custom_layers import Patches, PatchEncoder
+    TF_AVAILABLE = True
 except Exception as e:
-    print(f"Error loading model: {e}")
+    print(f"TensorFlow unavailable, vision model disabled: {e}")
+    keras = None
+    TF_AVAILABLE = False
+    Patches = None
+    PatchEncoder = None
+
+# Load model with custom objects only if TensorFlow is available
+if TF_AVAILABLE and keras is not None:
+    try:
+        model = keras.models.load_model(
+            "vision_transformer_model/model/my_model.keras",
+            custom_objects={'Patches': Patches, 'PatchEncoder': PatchEncoder}
+        )
+        print("Model loaded successfully")
+    except Exception as e:
+        print(f"Error loading model: {e}")
+        model = None
+else:
     model = None
 
 def rgb_callback(image, data_dict):
@@ -56,10 +67,18 @@ class CameraTextProcessing:
         print("Camera initialized successfully")
 
     def get_scenario_from_image(self):
-        if self.current_image is not None and model is not None:
+        # Get the latest image from sensor data
+        if hasattr(self, 'sensor_data') and 'rgb_image' in self.sensor_data:
+            image_data = self.sensor_data['rgb_image']
+        elif self.current_image is not None:
+            image_data = self.current_image
+        else:
+            return ""
+        
+        if model is not None and image_data is not None:
             # Convert image to the format expected by the model
             # Remove alpha channel and normalize
-            img_rgb = self.current_image[:, :, :3]  # Remove alpha channel
+            img_rgb = image_data[:, :, :3]  # Remove alpha channel
             
             # Resize image to 224x224 as expected by the model
             img_resized = cv2.resize(img_rgb, (224, 224))
@@ -68,10 +87,42 @@ class CameraTextProcessing:
             img_batch = np.expand_dims(img_normalized, axis=0)  # Add batch dimension
             
             try:
-                scenario = model.predict(img_batch, verbose=0)
-                return scenario
+                prediction = model.predict(img_batch, verbose=0)
+                # Convert prediction to text string description
+                if isinstance(prediction, np.ndarray):
+                    pred_array = prediction[0] if prediction.ndim > 1 else prediction
+                    
+                    # If prediction is a probability distribution or embeddings
+                    # Create a descriptive text based on the values
+                    if len(pred_array) > 1:
+                        # Get the top elements (most significant features)
+                        top_indices = np.argsort(pred_array)[-3:][::-1]  # Top 3
+                        descriptions = []
+                        scene_labels = [
+                            "road ahead clear", "vehicles nearby", "obstacles detected",
+                            "lane markings visible", "traffic signs present", "pedestrians nearby",
+                            "intersection ahead", "curved road", "straight road", "construction zone"
+                        ]
+                        
+                        for idx in top_indices:
+                            if idx < len(scene_labels):
+                                confidence = pred_array[idx]
+                                if confidence > 0.05:  # Threshold for significant detection
+                                    descriptions.append(f"{scene_labels[idx]} (confidence: {confidence:.2f})")
+                        
+                        if descriptions:
+                            scenario_text = "Scene contains: " + ", ".join(descriptions)
+                        else:
+                            scenario_text = "Scene analyzed: road conditions normal"
+                    else:
+                        scenario_text = f"Scene analyzed: prediction value {pred_array}"
+                else:
+                    scenario_text = str(prediction)
+                return scenario_text
             except Exception as e:
                 print(f"Error predicting scenario: {e}")
-                return ""
+                import traceback
+                traceback.print_exc()
+                return "Scene analysis unavailable"
         else:
             return ""

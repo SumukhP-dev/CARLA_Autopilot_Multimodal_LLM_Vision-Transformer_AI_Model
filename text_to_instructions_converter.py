@@ -41,7 +41,8 @@ class TextToInstructionsConverter:
             Target Speed: {current_speed_mps} m/s
             
             Instruction:
-            Generate a JSON object with two keys: "speed" (float) and "steer" (float). The "steer" value should be between -1.0 and 1.0.
+            Generate a JSON object with two keys: "speed" (float in m/s, typically 3-15 m/s) and "steer" (float between -1.0 and 1.0, where -1.0 is full left, 0 is straight, 1.0 is full right).
+            Speed should be reasonable for urban driving (3-15 m/s). Steer should be between -1.0 and 1.0.
             """
 
         try:
@@ -69,7 +70,17 @@ class TextToInstructionsConverter:
                     result = json.loads(json_str)
                     speed = result.get("speed", current_speed_mps)
                     steer = result.get("steer", current_steer_value)
-                    print(f"Parsed: speed={speed}, steer={steer}")
+                    
+                    # Validate and clamp values
+                    # Speed: reasonable range 3-20 m/s for urban driving
+                    speed = float(speed)
+                    speed = max(3.0, min(20.0, speed))  # Clamp between 3-20 m/s
+                    
+                    # Steer: must be between -1.0 and 1.0
+                    steer = float(steer)
+                    steer = max(-1.0, min(1.0, steer))  # Clamp between -1.0 and 1.0
+                    
+                    print(f"Parsed and validated: speed={speed:.2f} m/s, steer={steer:.2f}")
                     return speed, steer
                 except json.JSONDecodeError as e:
                     print(f"JSON parsing failed: {e}")
