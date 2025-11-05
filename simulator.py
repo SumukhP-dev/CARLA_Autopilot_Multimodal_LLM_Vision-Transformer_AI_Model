@@ -461,7 +461,36 @@ def main():
                 text_of_scene = "Test mode: Random controls enabled"
             else:
                 # Normal mode: use LLM and vision model
-                text_of_audio = convert("audio.mp3")
+                # Choose a random audio command from audio_files directory if available
+                try:
+                    audio_dir = os.path.join(os.getcwd(), "audio_files")
+                    # Supported audio extensions
+                    patterns = ["*.mp3", "*.wav", "*.ogg", "*.flac", "*.m4a"]
+                    candidates = []
+                    if os.path.isdir(audio_dir):
+                        for pattern in patterns:
+                            candidates.extend(glob.glob(os.path.join(audio_dir, pattern)))
+
+                    selected_audio_path = None
+                    if candidates:
+                        import random
+                        selected_audio_path = random.choice(candidates)
+                    else:
+                        # Fallback to root audio.mp3 if directory is empty or missing
+                        fallback = os.path.join(os.getcwd(), "audio.mp3")
+                        if os.path.exists(fallback):
+                            selected_audio_path = fallback
+
+                    if selected_audio_path is None:
+                        print("[Audio] No audio files found; converter will return mock text")
+                        text_of_audio = convert("audio.mp3")
+                    else:
+                        print(f"[Audio] Using command file: {selected_audio_path}")
+                        text_of_audio = convert(selected_audio_path)
+                except Exception as e:
+                    print(f"[Audio] Error selecting audio file: {e}. Falling back to default path")
+                    text_of_audio = convert("audio.mp3")
+
                 print(f"Audio text: {text_of_audio}")
 
                 text_of_scene = camera_text_processing.get_scenario_from_image()

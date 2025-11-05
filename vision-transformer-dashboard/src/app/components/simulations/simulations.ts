@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input, OnInit, OnDestroy } from '@angular/core';
-import { NgxChartsModule } from '@swimlane/ngx-charts';
+import { NgxChartsModule, LegendPosition } from '@swimlane/ngx-charts';
 import { HttpClient } from '@angular/common/http';
 import { interval, Subscription } from 'rxjs';
 
@@ -56,7 +56,7 @@ export class CarlaSimulationDashboardComponent implements OnInit, OnDestroy {
   animations = true;
   
   // Pie chart specific options
-  legendPosition = 'below'; // Position legend below chart to prevent overflow
+  legendPosition: LegendPosition = LegendPosition.Below; // Position legend below chart to prevent overflow
 
   // Color schemes
   colorScheme: any = {

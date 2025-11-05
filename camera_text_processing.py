@@ -98,8 +98,7 @@ class CameraTextProcessing:
         self.sensor_data = sensor_data
         self.camera = camera
         
-        # Initialize with a mock image for testing
-        self.current_image = np.zeros((image_h, image_w, 4), dtype=np.uint8)
+        # Camera frames will be provided by the sensor listener; no mock image
         print("Camera initialized successfully")
 
     def get_scenario_from_image(self):

@@ -40,7 +40,7 @@ def convert(audio_file):
         
     Returns:
         str: Transcribed text from the audio file, or error message string if:
-            - Audio file not found: Returns mock text "Turn left at the next intersection"
+            - Audio file not found: Returns ""
             - Recognition fails: Returns "Could not understand audio"
             - API error: Returns "Speech recognition service error"
             - Other errors: Returns "Audio processing error"
@@ -74,8 +74,8 @@ def convert(audio_file):
                 )
                 return "Speech recognition service error"
     except FileNotFoundError:
-        print(f"Audio file {audio_file} not found, returning mock text")
-        return "Turn left at the next intersection"
+        print(f"Audio file {audio_file} not found")
+        return ""
     except Exception as e:
         print(f"Error processing audio file: {e}")
         return "Audio processing error"
