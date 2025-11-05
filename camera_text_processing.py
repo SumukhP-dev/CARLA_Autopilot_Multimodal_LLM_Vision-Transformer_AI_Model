@@ -1,5 +1,5 @@
 # CARLA will be imported after path setup in main script
-import carla
+# Don't import carla at module level - it will be imported when needed
 import cv2
 import numpy as np
 try:
@@ -37,7 +37,33 @@ def rgb_callback(image, data_dict):
 
 
 class CameraTextProcessing:
+    """
+    Camera text processing module using Vision Transformer model.
+    
+    This class handles camera sensor initialization and processes camera images
+    through a Vision Transformer model to generate textual scene descriptions.
+    The scene descriptions are used by the LLM decision engine to make driving decisions.
+    
+    Attributes:
+        ego_vehicle: CARLA vehicle actor
+        camera_bp: Camera blueprint for sensor setup
+        bp_lib: CARLA blueprint library
+        world: CARLA world object
+        current_image: Current camera image (numpy array)
+        sensor_data: Dictionary containing sensor data
+        camera: CARLA camera sensor actor
+    """
+    
     def __init__(self, camera_bp, ego_vehicle, bp_lib, world):
+        """
+        Initialize camera text processing.
+        
+        Args:
+            camera_bp: CARLA camera blueprint
+            ego_vehicle: CARLA vehicle actor to attach camera to
+            bp_lib: CARLA blueprint library
+            world: CARLA world object
+        """
         self.ego_vehicle = ego_vehicle
         self.camera_bp = camera_bp
         self.bp_lib = bp_lib
@@ -45,6 +71,16 @@ class CameraTextProcessing:
         self.current_image = None
 
     def initial_camera(self):
+        """
+        Initialize and attach camera sensor to the vehicle.
+        
+        Sets up a RGB camera sensor at position (-0.1, 0, 1.7) relative to vehicle.
+        The camera listens for frames and stores them in sensor_data dictionary.
+        
+        Raises:
+            Exception: If camera initialization fails
+        """
+        import carla  # Import here after path setup
         camera_bp = self.bp_lib.find("sensor.camera.rgb")
         camera_init_trans = carla.Transform(carla.Location(x=-0.1, z=1.7))
         camera = self.world.spawn_actor(
@@ -67,6 +103,36 @@ class CameraTextProcessing:
         print("Camera initialized successfully")
 
     def get_scenario_from_image(self):
+        """
+        Process current camera image and generate scene description.
+        
+        This method takes the latest camera image, processes it through the Vision
+        Transformer model, and generates a textual description of the scene with
+        confidence scores for different scene elements.
+        
+        Returns:
+            str: Scene description text, or empty string if:
+                - Model is not loaded
+                - Image data is unavailable
+                - Processing fails
+        
+        Scene Labels Detected:
+            - "road ahead clear"
+            - "vehicles nearby"
+            - "obstacles detected"
+            - "lane markings visible"
+            - "traffic signs present"
+            - "pedestrians nearby"
+            - "intersection ahead"
+            - "curved road"
+            - "straight road"
+            - "construction zone"
+        
+        Note:
+            Images are resized to 224x224 and normalized to [0, 1] range before
+            being fed to the model. Only top 3 detected scene elements with
+            confidence > 0.05 are included in the description.
+        """
         # Get the latest image from sensor data
         if hasattr(self, 'sensor_data') and 'rgb_image' in self.sensor_data:
             image_data = self.sensor_data['rgb_image']

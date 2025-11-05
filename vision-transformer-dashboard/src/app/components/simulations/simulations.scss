@@ -1,13 +1,17 @@
 .simulations {
-  padding: 2rem;
+  padding: 1rem;
   background-color: #f5f7fa;
   min-height: 100vh;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  max-width: 100vw;
+  box-sizing: border-box;
+  overflow-x: hidden; // Prevent horizontal scroll
+  width: 100%;
 
   h2 {
     color: #2c3e50;
-    font-size: 2.5rem;
-    margin-bottom: 2rem;
+    font-size: 2rem;
+    margin-bottom: 1.25rem;
     text-align: center;
     font-weight: 700;
     letter-spacing: -0.5px;
@@ -15,22 +19,30 @@
 
   h3 {
     color: #34495e;
-    font-size: 1.5rem;
-    margin-bottom: 1.5rem;
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
     font-weight: 600;
   }
 
-  // Statistics Summary Cards
+  // Statistics Summary Cards - Compact for single-page view
   .stats-summary {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 3rem;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+
+    @media (max-width: 1200px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+    }
 
     .stat-card {
       background: white;
-      border-radius: 12px;
-      padding: 2rem;
+      border-radius: 10px;
+      padding: 1.25rem;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
       transition: all 0.3s ease;
       position: relative;
@@ -62,7 +74,7 @@
 
       .stat-value {
         color: #2d3748;
-        font-size: 2.5rem;
+        font-size: 2rem;
         font-weight: 700;
         margin: 0;
         line-height: 1;
@@ -97,25 +109,89 @@
     }
   }
 
-  // Chart Containers
-  .chart-container {
-    background: white;
-    border-radius: 12px;
-    padding: 2rem;
-    margin-bottom: 3rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+  // Main Charts Grid - 3 columns for everything at once
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 
-    ngx-charts-bar-vertical-2d {
-      display: flex;
+    @media (max-width: 1400px) {
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      
+      .chart-container:first-child {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 968px) {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
     }
   }
 
-  // Chart Row Layout
+  // Chart Containers - Compact
+  .chart-container {
+    background: white;
+    border-radius: 10px;
+    padding: 1rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+    overflow: hidden; // Prevent overflow from scaling
+    position: relative; // Contain any transforms
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    box-sizing: border-box;
+
+    h3 {
+      font-size: 1.1rem;
+      margin-bottom: 0.75rem;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    ngx-charts-bar-vertical-2d {
+      display: flex;
+      width: 100%;
+      max-width: 100%;
+    }
+
+    ::ng-deep .ngx-charts {
+      width: 100% !important;
+      max-width: 100% !important;
+      overflow: visible !important;
+      
+      .bar-chart {
+        height: 250px !important;
+        width: 100% !important;
+      }
+
+      svg {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: visible !important;
+      }
+
+      // Fix text truncation in chart labels
+      .x-axis {
+        text {
+          font-size: 11px !important;
+          word-spacing: 0 !important;
+        }
+      }
+    }
+  }
+
+  // Chart Row Layout - Compact
   .chart-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 2rem;
-    margin-bottom: 3rem;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
 
     @media (max-width: 968px) {
       grid-template-columns: 1fr;
@@ -123,21 +199,106 @@
 
     .chart-column {
       background: white;
-      border-radius: 12px;
-      padding: 2rem;
+      border-radius: 10px;
+      padding: 0.75rem;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+      overflow: hidden; // Prevent overflow from scaling
+      position: relative; // Contain any transforms
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      box-sizing: border-box;
+
+      h3 {
+        font-size: 1.1rem;
+        margin-bottom: 0.75rem;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+      }
 
       ngx-charts-pie-chart {
         display: block;
-        height: 350px;
+        height: 200px;
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
+      }
+
+      ::ng-deep .ngx-charts {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
+        
+        svg {
+          width: 100% !important;
+          max-width: 100% !important;
+          overflow: visible !important;
+        }
+
+        // Fix pie chart legend overflow
+        .pie-chart {
+          width: 100% !important;
+          max-width: 100% !important;
+          overflow: hidden !important;
+        }
+
+        // Position legend below chart or make it smaller
+        .chart-legend {
+          width: 100% !important;
+          max-width: 100% !important;
+          font-size: 10px !important;
+          
+          .legend-wrap {
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow: hidden !important;
+          }
+
+          .legend-labels {
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow: hidden !important;
+            
+            .legend-label {
+              font-size: 10px !important;
+              max-width: 100% !important;
+              overflow: hidden !important;
+              text-overflow: ellipsis !important;
+              white-space: nowrap !important;
+            }
+          }
+        }
+
+        // For horizontal legend (if used)
+        .legend-title {
+          font-size: 10px !important;
+        }
+
+        .legend-label-text {
+          font-size: 9px !important;
+          max-width: 80px !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          white-space: nowrap !important;
+        }
       }
     }
   }
 
-  // Safety Scores Section - FIXED PROGRESS BARS
+  // Safety Scores Section - Compact
   .safety-scores {
+    max-height: 250px;
+    overflow-y: auto;
+    
+    .empty-state {
+      padding: 2rem;
+      text-align: center;
+      color: #718096;
+      font-style: italic;
+    }
+    
     .score-item {
-      margin-bottom: 2rem;
+      margin-bottom: 1rem;
 
       &:last-child {
         margin-bottom: 0;
@@ -152,7 +313,13 @@
         .env-name {
           font-weight: 600;
           color: #4a5568;
-          font-size: 1.1rem;
+          font-size: 0.95rem;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          max-width: 60%;
+          text-overflow: ellipsis;
+          overflow: hidden;
+          white-space: nowrap;
         }
 
         .score-value {
@@ -246,12 +413,109 @@
     }
   }
 
+  // Detailed Table - Compact
+  .detailed-table {
+    background: white;
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+    max-height: 250px;
+    overflow-y: auto;
+    overflow-x: auto;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+
+    h3 {
+      font-size: 1.1rem;
+      margin-bottom: 0.75rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+
+      thead {
+        position: sticky;
+        top: 0;
+        background: white;
+        z-index: 10;
+
+        th {
+          padding: 0.75rem;
+          text-align: left;
+          font-weight: 600;
+          color: #4a5568;
+          border-bottom: 2px solid #e2e8f0;
+        }
+      }
+
+      tbody {
+        tr {
+          border-bottom: 1px solid #e2e8f0;
+          
+          &:hover {
+            background-color: #f7fafc;
+          }
+
+      td {
+        padding: 0.5rem;
+        font-size: 0.85rem;
+        
+        &:first-child {
+          max-width: 200px;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          text-overflow: ellipsis;
+          overflow: hidden;
+          white-space: nowrap;
+        }
+        
+        &.collision-count {
+          color: #e74c3c;
+          font-weight: 600;
+        }
+
+        &.safe-count {
+          color: #27ae60;
+          font-weight: 600;
+        }
+
+            .safety-badge {
+              padding: 0.25rem 0.75rem;
+              border-radius: 12px;
+              font-weight: 600;
+              font-size: 0.85rem;
+
+              &.safety-high {
+                color: #059862;
+                background-color: #d1fae5;
+              }
+
+              &.safety-medium {
+                color: #d97706;
+                background-color: #fed7aa;
+              }
+
+              &.safety-low {
+                color: #dc2626;
+                background-color: #fee2e2;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   // Responsive Design
   @media (max-width: 768px) {
     padding: 1rem;
 
     h2 {
-      font-size: 2rem;
+      font-size: 1.75rem;
     }
 
     .stats-summary {
@@ -262,7 +526,7 @@
     .chart-container,
     .chart-column,
     .detailed-table {
-      padding: 1.5rem;
+      padding: 1rem;
     }
 
     .detailed-table {
@@ -313,7 +577,58 @@
     }
 
     .axis-label {
-      font-size: 12px !important;
+      font-size: 11px !important;
+    }
+
+    // Fix x-axis labels to prevent truncation
+    .x-axis {
+      .tick {
+        text {
+          font-size: 10px !important;
+          text-anchor: middle !important;
+        }
+      }
+    }
+
+    // Ensure chart containers don't overflow
+    .chart-legend {
+      font-size: 11px !important;
+    }
+
+    // Prevent chart scaling on hover
+    .chart-container,
+    .chart-content,
+    .chart-container > * {
+      transform: none !important;
+      transition: none !important;
+    }
+
+    // Prevent individual chart elements from scaling
+    .bar-chart,
+    .pie-chart,
+    svg {
+      transform: none !important;
+      transition: none !important;
+      width: 100% !important;
+      height: auto !important;
+    }
+
+    // Prevent hover effects that cause scaling
+    .bar,
+    .arc,
+    .cell,
+    .bar-group,
+    .tooltip-area {
+      transform: none !important;
+      transition: opacity 0.2s ease, fill 0.2s ease !important;
+    }
+
+    // Allow hover effects on bars/pie segments but prevent scaling
+    .bar:hover,
+    .arc:hover,
+    .cell:hover {
+      opacity: 0.8 !important;
+      transform: none !important;
     }
   }
 }

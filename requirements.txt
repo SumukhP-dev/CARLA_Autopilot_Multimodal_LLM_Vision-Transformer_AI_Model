@@ -9,3 +9,6 @@ pygame
 tensorflow
 ffmpeg-downloader
 google-generativeai
+python-dotenv
+requests
+Pillow

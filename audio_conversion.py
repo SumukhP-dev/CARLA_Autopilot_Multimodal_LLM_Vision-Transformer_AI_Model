@@ -1,13 +1,54 @@
+import os
 import speech_recognition as sr
 from pydub import AudioSegment
+from dotenv import load_dotenv
 
-AudioSegment.converter = "C:\\ffmpeg\\ffmpeg.exe"
-AudioSegment.ffmpeg = "C:\\ffmpeg\\ffmpeg.exe"
-AudioSegment.ffprobe = "C:\\ffmpeg\\ffprobe.exe"
+# Load environment variables
+load_dotenv()
+
+# Configure FFmpeg paths from environment variables (platform-specific)
+# On Windows, these should point to the FFmpeg executables
+# On Linux/Mac, FFmpeg should be in PATH
+ffmpeg_path = os.environ.get("FFMPEG_PATH", "")
+ffmpeg_exe = os.environ.get("FFMPEG_EXE", "ffmpeg")
+ffprobe_exe = os.environ.get("FFPROBE_EXE", "ffprobe")
+
+# Set FFmpeg paths if explicitly provided (mainly for Windows)
+if ffmpeg_path:
+    AudioSegment.converter = os.path.join(ffmpeg_path, ffmpeg_exe)
+    AudioSegment.ffmpeg = os.path.join(ffmpeg_path, ffmpeg_exe)
+    AudioSegment.ffprobe = os.path.join(ffmpeg_path, ffprobe_exe)
+else:
+    # Try to use system FFmpeg (Linux/Mac or if in PATH on Windows)
+    AudioSegment.converter = ffmpeg_exe
+    AudioSegment.ffmpeg = ffmpeg_exe
+    AudioSegment.ffprobe = ffprobe_exe
+
 import io
 
 
 def convert(audio_file):
+    """
+    Convert audio file to text using speech recognition.
+    
+    This function processes audio files (MP3, WAV, etc.) and converts them to text
+    using Google Speech Recognition API. The audio is first converted to WAV format
+    using FFmpeg for compatibility.
+    
+    Args:
+        audio_file (str): Path to the audio file to process
+        
+    Returns:
+        str: Transcribed text from the audio file, or error message string if:
+            - Audio file not found: Returns mock text "Turn left at the next intersection"
+            - Recognition fails: Returns "Could not understand audio"
+            - API error: Returns "Speech recognition service error"
+            - Other errors: Returns "Audio processing error"
+    
+    Note:
+        Requires FFmpeg to be installed and configured (via environment variables
+        or system PATH). Network connection required for Google Speech Recognition API.
+    """
     try:
         # Convert to WAV format if needed
         audio = AudioSegment.from_file(audio_file)

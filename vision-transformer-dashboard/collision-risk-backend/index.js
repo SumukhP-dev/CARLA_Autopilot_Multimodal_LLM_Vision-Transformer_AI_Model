@@ -7,6 +7,7 @@ const app = express();
 // Middleware for parsing JSON
 const cors = require('cors');
 app.use(cors());
+app.use(express.json()); // Parse JSON bodies
 
 // Basic route
 app.get('/', (req, res) => {
@@ -14,8 +15,7 @@ app.get('/', (req, res) => {
 });
 
 let simulations = [
-  { name: 'Urban Intersection', collisions: 2, safeRuns: 18 },
-  { name: 'Highway Merge', collisions: 1, safeRuns: 19 },
+  // Only real simulation data - no default examples
 ];
 
 app.get('/api/simulations', (req, res) => {
@@ -24,8 +24,24 @@ app.get('/api/simulations', (req, res) => {
 
 app.post('/api/simulations', (req, res) => {
   const newSim = req.body;
-  simulations.push(newSim);
-  res.json({ message: 'Simulation added', data: newSim });
+  
+  // Find existing simulation with same name
+  const existingIndex = simulations.findIndex(sim => sim.name === newSim.name);
+  
+  if (existingIndex >= 0) {
+    // Update existing simulation (use latest values, or accumulate based on your preference)
+    // For now, we'll use the latest values sent
+    simulations[existingIndex] = {
+      name: newSim.name,
+      collisions: newSim.collisions || 0,
+      safeRuns: newSim.safeRuns || 0
+    };
+    res.json({ message: 'Simulation updated', data: simulations[existingIndex] });
+  } else {
+    // Add new simulation
+    simulations.push(newSim);
+    res.json({ message: 'Simulation added', data: newSim });
+  }
 });
 
 // Start server listening

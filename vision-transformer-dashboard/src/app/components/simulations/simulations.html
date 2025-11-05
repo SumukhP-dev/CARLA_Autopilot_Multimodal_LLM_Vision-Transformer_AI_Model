@@ -21,34 +21,36 @@
     </div>
   </div>
 
-  <!-- Bar Chart -->
-  <div class="chart-container">
-    <h3>Environment Performance Comparison</h3>
-    <ngx-charts-bar-vertical-2d
-      [results]="barChartData"
-      [gradient]="gradient"
-      [xAxis]="showXAxis"
-      [yAxis]="showYAxis"
-      [legend]="showLegend"
-      [showXAxisLabel]="showXAxisLabel"
-      [showYAxisLabel]="showYAxisLabel"
-      [xAxisLabel]="xAxisLabel"
-      [yAxisLabel]="yAxisLabel"
-      [animations]="animations"
-      [scheme]="colorScheme"
-      (select)="onSelect($event)"
-    >
-    </ngx-charts-bar-vertical-2d>
-  </div>
+  <!-- Charts Grid - Everything visible at once -->
+  <div class="charts-grid">
+    <!-- Bar Chart - Larger -->
+    <div class="chart-container">
+      <h3>Environment Performance Comparison</h3>
+      <ngx-charts-bar-vertical-2d
+        [results]="barChartData"
+        [gradient]="gradient"
+        [xAxis]="showXAxis"
+        [yAxis]="showYAxis"
+        [legend]="showLegend"
+        [showXAxisLabel]="showXAxisLabel"
+        [showYAxisLabel]="showYAxisLabel"
+        [xAxisLabel]="xAxisLabel"
+        [yAxisLabel]="yAxisLabel"
+        [animations]="animations"
+        [scheme]="colorScheme"
+        (select)="onSelect($event)"
+      >
+      </ngx-charts-bar-vertical-2d>
+    </div>
 
-  <!-- Pie Chart and Safety Scores -->
-  <div class="chart-row">
+    <!-- Pie Chart -->
     <div class="chart-column">
-      <h3>Overall Performance Distribution</h3>
+      <h3>Overall Distribution</h3>
       <ngx-charts-pie-chart
         [results]="pieChartData"
         [gradient]="gradient"
         [legend]="showLegend"
+        [legendPosition]="legendPosition"
         [animations]="animations"
         [scheme]="pieColorScheme"
         [labels]="true"
@@ -58,8 +60,9 @@
       </ngx-charts-pie-chart>
     </div>
 
+    <!-- Safety Scores -->
     <div class="chart-column">
-      <h3>Safety Scores by Environment</h3>
+      <h3>Safety Scores</h3>
       <div class="safety-scores">
         <div class="score-item" *ngFor="let env of environments">
           <div class="score-header">
@@ -75,6 +78,9 @@
               [ngClass]="getSafetyClass(getSafetyScore(env))"
             ></div>
           </div>
+        </div>
+        <div *ngIf="environments.length === 0" class="empty-state">
+          <p>No simulation data available</p>
         </div>
       </div>
     </div>

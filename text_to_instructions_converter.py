@@ -1,3 +1,10 @@
+"""
+Text to Instructions Converter Module
+
+This module uses Google's Gemini LLM to convert multimodal text inputs (audio commands
+and scene descriptions) into vehicle control commands (speed and steering).
+"""
+
 import os
 import google.generativeai as genai
 from dotenv import load_dotenv
@@ -10,6 +17,20 @@ GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 
 
 class TextToInstructionsConverter:
+    """
+    Converts multimodal text inputs to vehicle control commands using Gemini LLM.
+    
+    This class integrates audio commands and visual scene descriptions to generate
+    intelligent driving instructions (speed and steering values) for autonomous
+    vehicle control.
+    
+    Attributes:
+        model: Google GenerativeModel instance (Gemini 2.5 Flash)
+        acceleration: Current acceleration value (legacy, not actively used)
+        left: Left turn flag (legacy, not actively used)
+        right: Right turn flag (legacy, not actively used)
+        stop: Stop flag (legacy, not actively used)
+    """
     def __init__(self):
         if GOOGLE_API_KEY:
             genai.configure(api_key=GOOGLE_API_KEY)
@@ -23,6 +44,27 @@ class TextToInstructionsConverter:
         self.stop = False
 
     def convert(self, text_of_audio, text_of_scene, current_speed_mps, current_steer_value):
+        """
+        Convert multimodal text inputs to vehicle control commands.
+        
+        This method takes audio commands, scene descriptions, and current vehicle state,
+        then uses the Gemini LLM to generate appropriate speed and steering values.
+        
+        Args:
+            text_of_audio (str): Transcribed text from audio/voice commands
+            text_of_scene (str): Scene description from Vision Transformer model
+            current_speed_mps (float): Current vehicle speed in meters per second
+            current_steer_value (float): Current steering angle (-1.0 to 1.0)
+        
+        Returns:
+            tuple: (speed, steer) where:
+                - speed (float): Target speed in m/s (3-20 m/s, clamped)
+                - steer (float): Steering angle (-1.0 to 1.0, clamped)
+        
+        Note:
+            If LLM is unavailable or returns invalid output, returns current values.
+            All outputs are validated and clamped to safe ranges.
+        """
         if not self.model:
             return current_speed_mps, current_steer_value
             
