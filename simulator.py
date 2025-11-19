@@ -15,7 +15,11 @@ Large Language Models (LLMs) to enable intelligent autonomous driving.
 
 import glob
 import os
+import random
 import sys
+import statistics
+import numpy as np
+from collections import deque
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -30,6 +34,27 @@ from camera_text_processing import CameraTextProcessing
 from player import Player
 from text_to_instructions_converter import TextToInstructionsConverter
 from video_recorder import VideoRecorder
+
+def calculate_grade_level(safety_rate):
+    """Calculate grade level based on safety rate"""
+    if safety_rate >= 95:
+        return "A+"
+    elif safety_rate >= 90:
+        return "A"
+    elif safety_rate >= 85:
+        return "B+"
+    elif safety_rate >= 80:
+        return "B"
+    elif safety_rate >= 75:
+        return "C+"
+    elif safety_rate >= 70:
+        return "C"
+    elif safety_rate >= 65:
+        return "D+"
+    elif safety_rate >= 60:
+        return "D"
+    else:
+        return "F"
 
 def main():
     """
@@ -75,7 +100,6 @@ def main():
     # If still not found, try using glob pattern (CARLA's default approach)
     if not carla_path or not os.path.exists(carla_path):
         try:
-            import glob
             import platform
             system = platform.system()
             if system == "Windows":
@@ -320,23 +344,189 @@ def main():
     safe_frames = 0
     collision_detected = False
     
-    def send_to_dashboard(map_name, collisions, safe_runs):
-        """Send simulation data to dashboard backend"""
+    # Advanced statistics tracking (graduate CS level)
+    speed_history = deque(maxlen=1000)  # Rolling window for speed data
+    steering_history = deque(maxlen=1000)  # Rolling window for steering data
+    processing_times = {
+        'vision': deque(maxlen=100),
+        'audio': deque(maxlen=100),
+        'llm': deque(maxlen=100),
+        'total': deque(maxlen=100)
+    }
+    frame_times = deque(maxlen=100)  # For FPS calculation
+    last_frame_time = time.time()
+    
+    def calculate_confidence_interval(data, confidence=0.95):
+        """Calculate confidence interval for a dataset"""
+        if len(data) < 2:
+            return None, None, None
         try:
+            mean = statistics.mean(data)
+            stdev = statistics.stdev(data) if len(data) > 1 else 0
+            n = len(data)
+            # Using t-distribution for small samples, z for large
+            if n < 30:
+                from scipy import stats
+                t_critical = stats.t.ppf((1 + confidence) / 2, n - 1)
+                margin = t_critical * (stdev / np.sqrt(n))
+            else:
+                # Z-score for 95% confidence
+                z_critical = 1.96 if confidence == 0.95 else 2.576
+                margin = z_critical * (stdev / np.sqrt(n))
+            return mean, mean - margin, mean + margin
+        except:
+            return None, None, None
+    
+    def calculate_statistics_summary(data_list):
+        """Calculate comprehensive statistics for a dataset"""
+        if not data_list or len(data_list) == 0:
+            return {
+                'mean': 0,
+                'std': 0,
+                'variance': 0,
+                'min': 0,
+                'max': 0,
+                'median': 0,
+                'q25': 0,
+                'q75': 0,
+                'ci_lower': 0,
+                'ci_upper': 0
+            }
+        try:
+            data_array = np.array(data_list)
+            # Ensure all values are native Python types for JSON serialization
+            mean_val = float(np.mean(data_array))
+            std_val = float(np.std(data_array))
+            variance_val = float(np.var(data_array))
+            min_val = float(np.min(data_array))
+            max_val = float(np.max(data_array))
+            median_val = float(np.median(data_array))
+            q25 = float(np.percentile(data_array, 25))
+            q75 = float(np.percentile(data_array, 75))
+            
+            # Calculate confidence interval
+            mean_ci, ci_lower, ci_upper = calculate_confidence_interval(list(data_list))
+            if mean_ci is None:
+                ci_lower, ci_upper = float(mean_val - std_val), float(mean_val + std_val)
+            else:
+                ci_lower, ci_upper = float(ci_lower), float(ci_upper)
+            
+            # Return all values as native Python types (not numpy types)
+            result = {
+                'mean': float(round(mean_val, 3)),
+                'std': float(round(std_val, 3)),
+                'variance': float(round(variance_val, 3)),
+                'min': float(round(min_val, 3)),
+                'max': float(round(max_val, 3)),
+                'median': float(round(median_val, 3)),
+                'q25': float(round(q25, 3)),
+                'q75': float(round(q75, 3)),
+                'ci_lower': float(round(ci_lower, 3)),
+                'ci_upper': float(round(ci_upper, 3)),
+                'sample_size': int(len(data_list))
+            }
+            return result
+        except Exception as e:
+            print(f"[Stats] Error calculating statistics: {e}")
+            return {
+                'mean': 0, 'std': 0, 'variance': 0, 'min': 0, 'max': 0,
+                'median': 0, 'q25': 0, 'q75': 0, 'ci_lower': 0, 'ci_upper': 0, 'sample_size': 0
+            }
+    
+    def send_to_dashboard(map_name, collisions, safe_runs):
+        """Send simulation data to dashboard backend with advanced statistics"""
+        try:
+            # Calculate safety rate and grade level
+            total_runs = collisions + safe_runs
+            safety_rate = (safe_runs / total_runs * 100) if total_runs > 0 else 0
+            grade_level = calculate_grade_level(safety_rate)
+            
+            # Calculate advanced statistics - ensure all values are native Python types
+            speed_list = [float(s) for s in list(speed_history)]
+            steering_list = [float(s) for s in list(steering_history)]
+            speed_stats = calculate_statistics_summary(speed_list)
+            steering_stats = calculate_statistics_summary(steering_list)
+            
+            # Calculate FPS from frame times
+            avg_fps = 0.0
+            fps_stats = {'mean': 0.0, 'std': 0.0, 'min': 0.0, 'max': 0.0, 'variance': 0.0, 'median': 0.0, 'q25': 0.0, 'q75': 0.0, 'ci_lower': 0.0, 'ci_upper': 0.0, 'sample_size': 0}
+            if len(frame_times) > 0:
+                fps_values = [float(1.0 / dt) if dt > 0 else 0.0 for dt in frame_times]
+                fps_stats = calculate_statistics_summary(fps_values)
+                avg_fps = float(fps_stats.get('mean', 0.0))
+            
+            # Processing time statistics
+            processing_stats = {}
+            for key in processing_times:
+                if len(processing_times[key]) > 0:
+                    # Convert deque to list and ensure all values are floats
+                    times_list = [float(t) for t in list(processing_times[key])]
+                    processing_stats[key] = calculate_statistics_summary(times_list)
+                else:
+                    processing_stats[key] = {'mean': 0.0, 'std': 0.0, 'min': 0.0, 'max': 0.0, 'median': 0.0, 'variance': 0.0, 'q25': 0.0, 'q75': 0.0, 'ci_lower': 0.0, 'ci_upper': 0.0, 'sample_size': 0}
+            
+            # Calculate coefficient of variation (CV) for stability metrics
+            speed_cv = (speed_stats['std'] / speed_stats['mean'] * 100) if speed_stats['mean'] > 0 else 0
+            steering_cv = (steering_stats['std'] / abs(steering_stats['mean']) * 100) if steering_stats['mean'] != 0 else 0
+            
             data = {
                 "name": map_name,
                 "collisions": collisions,
-                "safeRuns": safe_runs
+                "safeRuns": safe_runs,
+                "safetyRate": round(safety_rate, 2),
+                "gradeLevel": grade_level,
+                # Advanced statistics
+                "speedStats": speed_stats,
+                "steeringStats": steering_stats,
+                "fpsStats": fps_stats,
+                "processingStats": processing_stats,
+                "speedCV": round(speed_cv, 2),  # Coefficient of variation
+                "steeringCV": round(steering_cv, 2),
+                "totalFrames": frame_count,
+                "avgFPS": round(avg_fps, 2)
             }
+            # Debug: Print what we're sending
+            print(f"[Dashboard] Sending data with speedStats keys: {list(speed_stats.keys()) if speed_stats else 'None'}")
+            print(f"[Dashboard] Speed stats mean: {speed_stats.get('mean', 'N/A')}, std: {speed_stats.get('std', 'N/A')}")
+            print(f"[Dashboard] Speed history length: {len(speed_history)}, Steering history length: {len(steering_history)}")
+            print(f"[Dashboard] Total frames: {frame_count}, Avg FPS: {avg_fps:.2f}")
+            print(f"[Dashboard] Data keys being sent: {list(data.keys())}")
+            
+            # Ensure all required fields are present and not None
+            if data.get('speedStats') is None:
+                print("[Dashboard] WARNING: speedStats is None, using empty dict")
+                data['speedStats'] = {}
+            if data.get('steeringStats') is None:
+                print("[Dashboard] WARNING: steeringStats is None, using empty dict")
+                data['steeringStats'] = {}
+            if data.get('processingStats') is None:
+                print("[Dashboard] WARNING: processingStats is None, using empty dict")
+                data['processingStats'] = {}
+            
+            # Verify data structure before sending
+            try:
+                import json
+                test_json = json.dumps(data)
+                print(f"[Dashboard] Data serialization test: OK ({len(test_json)} bytes)")
+            except Exception as e:
+                print(f"[Dashboard] ERROR: Data serialization failed: {e}")
+                import traceback
+                traceback.print_exc()
+            
             response = requests.post(dashboard_url, json=data, timeout=2.0)
             if response.status_code == 200:
-                print(f"[Dashboard] Data sent successfully: {data}")
+                print(f"[Dashboard] Advanced statistics sent successfully")
                 return True
             else:
                 print(f"[Dashboard] Failed to send data: {response.status_code}")
                 return False
         except requests.exceptions.RequestException as e:
             print(f"[Dashboard] Connection error (backend may not be running): {e}")
+            return False
+        except Exception as e:
+            print(f"[Dashboard] Error preparing statistics: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     print("Starting autopilot simulation...")
@@ -451,9 +641,15 @@ def main():
             # Check if test mode is enabled (random controls for fast testing)
             test_mode = os.environ.get("TEST_MODE", "false").lower() == "true"
             
+            # Track frame timing for FPS calculation
+            current_time = time.time()
+            frame_delta = current_time - last_frame_time
+            frame_times.append(frame_delta)
+            last_frame_time = current_time
+            frame_start_time = current_time  # Initialize for both modes
+            
             if test_mode:
                 # Use random values for fast testing without LLM calls
-                import random
                 speed = random.uniform(3.0, 8.0)  # Random speed between 3-8 m/s
                 steer = random.uniform(-0.8, 0.8)  # Random steering between -0.8 to 0.8
                 print(f"[TEST MODE] Random controls: speed={speed:.2f} m/s, steer={steer:.2f}")
@@ -461,7 +657,16 @@ def main():
                 text_of_scene = "Test mode: Random controls enabled"
             else:
                 # Normal mode: use LLM and vision model
-                # Choose a random audio command from audio_files directory if available
+                frame_start_time = time.time()
+                
+                # Vision processing with timing
+                vision_start = time.time()
+                text_of_scene = camera_text_processing.get_scenario_from_image()
+                vision_time = time.time() - vision_start
+                processing_times['vision'].append(vision_time)
+                
+                # Audio processing with timing
+                audio_start = time.time()
                 try:
                     audio_dir = os.path.join(os.getcwd(), "audio_files")
                     # Supported audio extensions
@@ -473,27 +678,34 @@ def main():
 
                     selected_audio_path = None
                     if candidates:
-                        import random
                         selected_audio_path = random.choice(candidates)
+                        print(f"[Audio] Randomly selected audio file: {selected_audio_path}")
                     else:
                         # Fallback to root audio.mp3 if directory is empty or missing
                         fallback = os.path.join(os.getcwd(), "audio.mp3")
                         if os.path.exists(fallback):
                             selected_audio_path = fallback
+                            print(f"[Audio] Using fallback audio file: {fallback}")
 
                     if selected_audio_path is None:
-                        print("[Audio] No audio files found; converter will return mock text")
-                        text_of_audio = convert("audio.mp3")
+                        print("[Audio] No audio files found; using default mock text")
+                        text_of_audio = "No audio command available"
                     else:
-                        print(f"[Audio] Using command file: {selected_audio_path}")
+                        print(f"[Audio] Processing audio file: {selected_audio_path}")
                         text_of_audio = convert(selected_audio_path)
+                        if not text_of_audio or text_of_audio == "":
+                            print("[Audio] Audio conversion returned empty, using default text")
+                            text_of_audio = "Could not understand audio"
                 except Exception as e:
-                    print(f"[Audio] Error selecting audio file: {e}. Falling back to default path")
-                    text_of_audio = convert("audio.mp3")
-
+                    print(f"[Audio] Error selecting/processing audio file: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    text_of_audio = "Audio processing error"
+                
+                audio_time = time.time() - audio_start
+                processing_times['audio'].append(audio_time)
+                
                 print(f"Audio text: {text_of_audio}")
-
-                text_of_scene = camera_text_processing.get_scenario_from_image()
                 print(f"Scene analysis: {text_of_scene}")
 
             # Capture frame for video recording (every Nth frame to match video FPS)
@@ -534,8 +746,19 @@ def main():
             # Make movements for ego vehicle
             if not test_mode:
                 # Normal mode: use LLM for decision making
+                llm_start = time.time()
                 speed, steer = text_to_instructions_converter.convert(text_of_audio, text_of_scene, speed_mps, steer_angle)
+                llm_time = time.time() - llm_start
+                processing_times['llm'].append(llm_time)
+                
+                # Track total processing time
+                total_processing_time = time.time() - frame_start_time
+                processing_times['total'].append(total_processing_time)
             # else: speed and steer are already set from random values above
+            
+            # Track speed and steering values for statistics
+            speed_history.append(speed)
+            steering_history.append(steer)
             
             # Validate and clamp speed and steer values
             if not isinstance(speed, (int, float)) or speed < 0:

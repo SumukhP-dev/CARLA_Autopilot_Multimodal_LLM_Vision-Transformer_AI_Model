@@ -1,0 +1,14 @@
+=== Debug Test Started ===
+Sending data: {"name":"FileDebugTest","collisions":5,"safeRuns":95,"safetyRate":95,"gradeLevel":"A","speedStats":{"mean":5.5,"std":1.2,"variance":1.44},"steeringStats":{"mean":0.1,"std":0.05},"totalFrames":1000,"avgFPS":30}
+
+POST Response: {"message":"Simulation added","data":{"name":"FileDebugTest","collisions":5,"safeRuns":95,"safetyRate":95,"gradeLevel":"A","speedStats":{"mean":5.5,"std":1.2,"variance":1.44},"steeringStats":{"mean":0.1,"std":0.05},"totalFrames":1000,"avgFPS":30}}
+
+GET Response: [{"name":"Carla/Maps/Town03","collisions":10,"safeRuns":429,"safetyRate":97.72,"gradeLevel":"A+"},{"name":"TestEnv","collisions":5,"safeRuns":95,"safetyRate":95,"gradeLevel":"A"},{"name":"TestEnv2","collisions":5,"safeRuns":95,"safetyRate":95,"gradeLevel":"A"},{"name":"FullTest","collisions":10,"safeRuns":90,"safetyRate":90,"gradeLevel":"A"},{"name":"DebugTest","collisions":10,"safeRuns":90,"safetyRate":90,"gradeLevel":"A"},{"name":"TestEnv3","collisions":5,"safeRuns":95,"safetyRate":95,"gradeLevel":"A"},{"name":"FinalTest","collisions":5,"safeRuns":95,"safetyRate":95,"gradeLevel":"A"},{"name":"SyntaxFixTest","collisions":5,"safeRuns":95,"safetyRate":95,"gradeLevel":"A"},{"name":"DeepCopyTest","collisions":10,"safeRuns":90,"safetyRate":90,"gradeLevel":"A"},{"name":"EnhancedDebugTest","collisions":5,"safeRuns":95,"safetyRate":95,"gradeLevel":"A"},{"name":"FileDebugTest","collisions":5,"safeRuns":95,"safetyRate":95,"gradeLevel":"A"}]
+
+Contains speedStats: false
+
+FileDebugTest found
+Properties: name, collisions, safeRuns, safetyRate, gradeLevel
+Has speedStats: false
+
+=== Debug Test Complete ===
