@@ -20,15 +20,68 @@
   flex-direction: column;
   gap: 0.2rem;
 
+  .dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.2rem;
+    flex-shrink: 0;
+  }
+
   h2 {
     color: #2c3e50;
     font-size: 1.1rem;
-    margin-bottom: 0.2rem;
+    margin-bottom: 0;
     margin-top: 0;
-    text-align: center;
+    text-align: left;
     font-weight: 700;
     letter-spacing: -0.5px;
     flex-shrink: 0;
+  }
+
+  .status-indicator {
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'Courier New', monospace;
+
+    .loading {
+      color: #3b82f6;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    .updated {
+      color: #22c55e;
+      font-weight: 600;
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    .waiting {
+      color: #f59e0b;
+    }
+
+    .error {
+      color: #ef4444;
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0.5;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
   }
 
   h3 {

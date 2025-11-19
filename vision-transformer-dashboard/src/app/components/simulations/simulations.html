@@ -1,5 +1,15 @@
 <div class="simulations">
-  <h2>CARLA Simulation Results</h2>
+  <div class="dashboard-header">
+    <h2>CARLA Simulation Results</h2>
+    <div class="status-indicator">
+      <span *ngIf="isLoading" class="loading">🔄 Loading...</span>
+      <span *ngIf="!isLoading && lastUpdateTime" class="updated">
+        ✓ Updated: {{ lastUpdateTime | date:'HH:mm:ss.SSS' }}
+      </span>
+      <span *ngIf="errorMessage" class="error">⚠ {{ errorMessage }}</span>
+      <span *ngIf="!isLoading && !errorMessage && !lastUpdateTime" class="waiting">⏳ Waiting for data...</span>
+    </div>
+  </div>
 
   <!-- Summary Statistics - Compact -->
   <div class="stats-summary">

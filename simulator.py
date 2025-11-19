@@ -34,7 +34,6 @@ from audio_conversion import convert
 from camera_text_processing import CameraTextProcessing
 from player import Player
 from text_to_instructions_converter import TextToInstructionsConverter
-from video_recorder import VideoRecorder
 
 def calculate_grade_level(safety_rate):
     """Calculate grade level based on safety rate"""
@@ -579,51 +578,32 @@ def main():
     # Check if test mode is enabled (random controls for fast testing)
     test_mode = os.environ.get("TEST_MODE", "false").lower() == "true"
     
-    # Initialize video recorder for 2 minutes of recording
-    # Note: Actual simulation may run slower due to LLM/ML processing, so we calculate
-    # duration based on expected frame rate, not wall-clock time
-    record_duration = 120  # Target duration: 2 minutes in seconds
-    video_fps = 20  # Frames per second for video output
-    record_frames = record_duration * video_fps  # Total frames for 2 minutes (2400 frames)
+    # Configure simulation duration based on desired frame budget
+    run_duration_seconds = int(os.environ.get("RUN_DURATION_SECONDS", "120"))
+    target_fps = int(os.environ.get("TARGET_FPS", "20"))
+    default_frame_budget = run_duration_seconds * target_fps
     
-    # Since each frame takes longer (LLM calls, etc.), increase time limit
-    # In test mode, frames are much faster (no LLM), so use shorter time limit
+    # Since each frame may involve expensive ML calls, allow extra wall-clock time
     if test_mode:
-        actual_duration = record_duration * 2  # 4 minutes for test mode (faster frames)
+        actual_duration = run_duration_seconds * 2  # Faster loop when skipping LLM
         print(f"[TEST MODE] Enabled - Using random steering and speeds for fast testing")
         print(f"[TEST MODE] Time limit: {actual_duration} seconds (no LLM calls)")
     else:
-        actual_duration = record_duration * 5  # 10 minutes = 600 seconds for normal mode
+        actual_duration = run_duration_seconds * 5  # Provide plenty of time for ML latency
     
-    # Check if dashboard recording is enabled via environment variable
-    include_dashboard = os.environ.get("RECORD_DASHBOARD", "false").lower() == "true"
-    dashboard_url = os.environ.get("DASHBOARD_URL", "http://localhost:4200")
+    # Determine maximum number of frames to simulate
+    max_frames_env = os.environ.get("MAX_FRAMES")
+    if max_frames_env:
+        max_frames = int(max_frames_env)
+        if max_frames < default_frame_budget:
+            print(f"[INFO] MAX_FRAMES={max_frames} is less than the default budget ({default_frame_budget} frames). Simulation will stop early.")
+    else:
+        max_frames = default_frame_budget
+        print(f"[INFO] Using default MAX_FRAMES={max_frames} for the simulation run")
     
-    # Optional bounding box for dashboard window (left, top, right, bottom)
-    # Format: "100,100,900,700" (example: captures window at position 100,100 with size 800x600)
-    dashboard_bbox = None
-    dashboard_bbox_str = os.environ.get("DASHBOARD_BBOX")
-    if dashboard_bbox_str:
-        try:
-            dashboard_bbox = tuple(map(int, dashboard_bbox_str.split(',')))
-            if len(dashboard_bbox) != 4:
-                print(f"[Video] Warning: Invalid DASHBOARD_BBOX format, using full screen")
-                dashboard_bbox = None
-        except ValueError:
-            print(f"[Video] Warning: Invalid DASHBOARD_BBOX format, using full screen")
-            dashboard_bbox = None
-    
-    video_recorder = VideoRecorder(
-        output_path="recordings", 
-        fps=video_fps, 
-        width=800, 
-        height=600,
-        include_dashboard=include_dashboard,
-        dashboard_url=dashboard_url,
-        dashboard_bbox=dashboard_bbox
-    )
-    video_recorder.start_recording()
-    print(f"[Video] Recording started - will record for {record_duration} seconds ({record_frames} frames at {video_fps} FPS)")
+    start_time = time.time()
+    end_time = start_time + actual_duration
+    print(f"[Simulation] Time limit: {actual_duration} seconds")
     
     # Thread pool for heavy tasks (vision/audio/LLM)
     task_executor = ThreadPoolExecutor(max_workers=3)
@@ -646,27 +626,7 @@ def main():
         latest_audio_text = "No audio command available"
     
     frame_count = 0
-    # Use record_frames for 2 minutes, but allow override via environment
-    # Default to 2400 frames (2 minutes at 20 FPS) if not specified
-    max_frames_env = os.environ.get("MAX_FRAMES")
-    if max_frames_env:
-        max_frames = int(max_frames_env)
-        if max_frames < record_frames:
-            print(f"[INFO] MAX_FRAMES={max_frames} is less than 2 minutes ({record_frames} frames). Recording will be limited.")
-    else:
-        # Use full recording duration if MAX_FRAMES not set
-        max_frames = record_frames
-        print(f"[INFO] Using default MAX_FRAMES={max_frames} for full 2-minute recording")
-    start_time = time.time()
-    end_time = start_time + actual_duration  # Allow 10 minutes wall-clock for 2 minutes of simulation
-    print(f"[Video] Time limit: {actual_duration} seconds (allowing for slow LLM/ML processing)")
-    
-    # Calculate frame interval: capture every Nth simulation frame to match video FPS
-    # Simulation runs at 60 FPS (from clock.tick), video needs 20 FPS
-    # So we capture every 3rd frame (60/20 = 3)
     simulation_fps = 60  # Pygame clock tick rate
-    frame_skip = max(1, simulation_fps // video_fps)  # Capture every Nth frame
-    print(f"[Video] Frame capture: Every {frame_skip} simulation frames (simulation: {simulation_fps} FPS, video: {video_fps} FPS)")
 
     while not done and frame_count < max_frames and time.time() < end_time:
         try:
@@ -784,33 +744,6 @@ def main():
                 text_of_scene = latest_scene_text
                 print(f"Audio text: {text_of_audio}")
                 print(f"Scene analysis: {text_of_scene}")
-
-            # Capture frame for video recording (every Nth frame to match video FPS)
-            # Note: frame_count starts at 1, so we check (frame_count - 1) % frame_skip == 0
-            # This ensures we capture frames 1, 4, 7, 10... (every 3rd frame)
-            if video_recorder.is_recording() and (frame_count - 1) % frame_skip == 0:
-                try:
-                    # Get the latest camera image
-                    if hasattr(camera_text_processing, 'sensor_data') and 'rgb_image' in camera_text_processing.sensor_data:
-                        image_data = camera_text_processing.sensor_data['rgb_image']
-                        if image_data is not None and image_data.size > 0:
-                            # Remove alpha channel if present
-                            if len(image_data.shape) == 3 and image_data.shape[2] == 4:
-                                image_rgb = image_data[:, :, :3]
-                            else:
-                                image_rgb = image_data
-                            
-                            # Debug: Check image properties
-                            if frame_count == 1 or frame_count % 30 == 0:  # Log first frame and every 30 frames
-                                print(f"[Video] Frame {frame_count}: Image shape={image_rgb.shape}, dtype={image_rgb.dtype}, min={image_rgb.min()}, max={image_rgb.max()}")
-                            
-                            video_recorder.add_frame(image_rgb)
-                            if video_recorder.frame_count % 10 == 0:  # Log every 10 successfully written frames
-                                print(f"[Video] Successfully captured {video_recorder.frame_count} frames for video")
-                except Exception as e:
-                    print(f"[Video] Warning: Could not capture frame: {e}")
-                    import traceback
-                    traceback.print_exc()
 
             # Get vehicle velocity and convert to m/s
             velocity = ego_vehicle.get_velocity()
@@ -976,14 +909,6 @@ def main():
         task_executor.shutdown(wait=False, cancel_futures=True)
     except Exception as e:
         print(f"[Executor] Warning: failed to shutdown executor: {e}")
-    
-    # Stop video recording
-    if video_recorder.is_recording():
-        video_file = video_recorder.stop_recording()
-        if video_file:
-            elapsed_time = time.time() - start_time
-            print(f"[Video] Recording completed: {elapsed_time:.1f} seconds, {frame_count} frames")
-            print(f"[Video] Video saved to: {video_file}")
     
     # Send final summary to dashboard
     print("\n" + "=" * 60)

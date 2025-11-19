@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { NgxChartsModule, Color, ScaleType } from '@swimlane/ngx-charts';
@@ -75,6 +75,9 @@ export class CarlaSimulationDashboardComponent implements OnInit, OnDestroy {
   totalCollisions = 0;
   totalSafeRuns = 0;
   overallSafetyRate = 0;
+  isLoading = false;
+  lastUpdateTime: Date | null = null;
+  errorMessage: string | null = null;
 
   barChartData: any[] = [];
   envStackedData: any[] = [];
@@ -125,14 +128,22 @@ export class CarlaSimulationDashboardComponent implements OnInit, OnDestroy {
   // Toggle for collapsible table
   toggleTable = false;
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private cdr: ChangeDetectorRef
+  ) {
+    console.log('[Dashboard] Component constructor called');
+  }
 
   ngOnInit(): void {
+    console.log('[Dashboard] Component initialized - starting data load');
     this.loadData();
-    // Refresh data every 2 seconds
+    // Refresh data every 1 second for real-time updates
     this.refreshInterval = setInterval(() => {
+      console.log('[Dashboard] Scheduled refresh triggered');
       this.loadData();
-    }, 2000);
+    }, 1000);
+    console.log('[Dashboard] Refresh interval set to 1000ms');
   }
 
   ngOnDestroy(): void {
@@ -142,17 +153,79 @@ export class CarlaSimulationDashboardComponent implements OnInit, OnDestroy {
   }
 
   loadData(): void {
-    this.http.get<any[]>('http://localhost:4000/api/simulations').subscribe({
-      next: (data) => {
+    this.isLoading = true;
+    this.errorMessage = null;
+    const fetchStartTime = Date.now();
+    console.log('[Dashboard] ===== loadData() called =====');
+    console.log('[Dashboard] Fetching data from http://localhost:4000/api/simulations');
+    console.log('[Dashboard] Current environments count:', this.environments.length);
+    
+    this.http.get<any[]>('http://localhost:4000/api/simulations', {
+      observe: 'response',
+      headers: {
+        'Accept': 'application/json'
+      }
+    }).subscribe({
+      next: (response) => {
+        const fetchDuration = Date.now() - fetchStartTime;
+        const data = response.body || [];
+        console.log(`[Dashboard] ===== HTTP Response Received =====`);
+        console.log(`[Dashboard] Status: ${response.status} ${response.statusText}`);
+        console.log(`[Dashboard] Response time: ${fetchDuration}ms`);
+        console.log(`[Dashboard] Data type:`, typeof data);
+        console.log(`[Dashboard] Data length:`, data?.length || 0);
+        console.log(`[Dashboard] Raw data:`, JSON.stringify(data).substring(0, 500));
+        
+        // Always update timestamp, even if data hasn't changed
+        this.lastUpdateTime = new Date();
+        
+        // Check if data actually changed
+        const oldDataStr = JSON.stringify(this.environments);
+        const newDataStr = JSON.stringify(data || []);
+        const dataChanged = oldDataStr !== newDataStr;
+        
+        if (dataChanged) {
+          console.log('[Dashboard] ✓ Data changed - updating display');
+          console.log('[Dashboard] Old data length:', this.environments.length);
+        } else {
+          console.log('[Dashboard] ⚠ Data unchanged, but timestamp updated');
+        }
+        
         this.environments = data || [];
+        console.log('[Dashboard] Environments set to:', this.environments.length, 'items');
+        this.isLoading = false;
+        
+        // Force change detection
         this.prepareChartData();
         this.calculateStatistics();
+        
+        // Force change detection for zoneless mode
+        this.cdr.detectChanges();
+        
+        console.log('[Dashboard] Chart data updated at', this.lastUpdateTime.toLocaleTimeString());
+        console.log('[Dashboard] Total simulations:', this.totalSimulations);
+        console.log('[Dashboard] ===== End Response Processing =====');
       },
       error: (error) => {
-        console.error('Error loading simulation data:', error);
+        console.error('[Dashboard] ===== HTTP Error =====');
+        console.error('[Dashboard] Error loading simulation data:', error);
+        console.error('[Dashboard] Error details:', {
+          status: error?.status,
+          statusText: error?.statusText,
+          message: error?.message,
+          url: error?.url,
+          name: error?.name
+        });
+        this.errorMessage = `Failed to load data: ${error?.status || 'Unknown error'} - ${error?.message || ''}`;
         this.environments = [];
+        this.isLoading = false;
+        // Still update timestamp on error so user knows the dashboard is trying
+        this.lastUpdateTime = new Date();
         this.prepareChartData();
         this.calculateStatistics();
+        // Force change detection even on error
+        this.cdr.detectChanges();
+        console.error('[Dashboard] ===== End Error Handling =====');
       },
     });
   }

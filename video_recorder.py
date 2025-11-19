@@ -1,5 +1,5 @@
 import os
-import time
+import subprocess
 from datetime import datetime
 from typing import Optional
 
@@ -46,7 +46,10 @@ class VideoRecorder:
         self._recording = False
         self.frame_count = 0
         self._writer = None
+        self._ffmpeg_proc: Optional[subprocess.Popen] = None
         self._output_file: Optional[str] = None
+        self._writer_file: Optional[str] = None
+        self._ffmpeg_path = os.environ.get("FFMPEG_PATH", "ffmpeg")
         self._sct = mss.mss() if (include_dashboard and MSS_AVAILABLE) else None
         # Determine output size (double width if including dashboard)
         self._out_w = width * 2 if include_dashboard else width
@@ -63,29 +66,19 @@ class VideoRecorder:
             return
         # Create output file name
         ts = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"carla_dashboard_{ts}.mp4"
-        self._output_file = os.path.join(self.output_path, filename)
-        # Use MP4V; if not supported on platform, some players may prefer AVI with MJPG
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        try:
-            self._writer = cv2.VideoWriter(self._output_file, fourcc, self.fps, (self._out_w, self._out_h))
-            if not self._writer.isOpened():
-                # Fallback to MJPG AVI
-                avi_name = f"carla_dashboard_{ts}.avi"
-                self._output_file = os.path.join(self.output_path, avi_name)
-                fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-                self._writer = cv2.VideoWriter(self._output_file, fourcc, self.fps, (self._out_w, self._out_h))
-        except Exception:
-            self._writer = None
+        base_name = f"carla_dashboard_{ts}"
+        # Write MJPEG AVI using ffmpeg subprocess for stability
+        writer_ext = 'avi'
+        self._output_file = os.path.join(self.output_path, f"{base_name}.{writer_ext}")
+        self._writer_file = self._output_file
+
+        self._start_ffmpeg_writer()
 
     def is_recording(self) -> bool:
         return self._recording
 
     def add_frame(self, image_rgb) -> None:
-        if not self._recording:
-            return
-        self.frame_count += 1
-        if not CV2_AVAILABLE:
+        if not self._recording or (self._writer is None and self._ffmpeg_proc is None):
             return
         try:
             # Ensure numpy array, RGB -> BGR
@@ -99,11 +92,8 @@ class VideoRecorder:
             frame_bgr = cv2.resize(frame_bgr, (self.width, self.height))
 
             if self.include_dashboard and self._sct is not None:
-                # Capture dashboard region if provided, else capture primary monitor
-                if self.dashboard_bbox and all(k in self.dashboard_bbox for k in ("left","top","width","height")):
-                    monitor = self.dashboard_bbox
-                else:
-                    monitor = self._sct.monitors[1]
+                # Always capture the full primary monitor for the dashboard view
+                monitor = self._sct.monitors[1]
                 sct_img = self._sct.grab(monitor)
                 dash = np.array(sct_img)[:, :, :3]  # BGRA -> BGR
                 dash = cv2.resize(dash, (self.width, self.height))
@@ -113,8 +103,16 @@ class VideoRecorder:
             else:
                 out_frame = frame_bgr
 
-            if self._writer is not None:
+            if self._ffmpeg_proc is not None and self._ffmpeg_proc.stdin:
+                try:
+                    self._ffmpeg_proc.stdin.write(out_frame.tobytes())
+                    self.frame_count += 1
+                except BrokenPipeError:
+                    print("[Video] ERROR: ffmpeg pipe broke during write")
+                    self._recording = False
+            elif self._writer is not None:
                 self._writer.write(out_frame)
+                self.frame_count += 1
         except Exception:
             # Swallow errors to avoid breaking the sim loop
             pass
@@ -126,7 +124,53 @@ class VideoRecorder:
                 self._writer.release()
             except Exception:
                 pass
+        if self._ffmpeg_proc is not None:
+            try:
+                if self._ffmpeg_proc.stdin:
+                    self._ffmpeg_proc.stdin.close()
+                self._ffmpeg_proc.wait(timeout=5)
+            except Exception:
+                pass
+            finally:
+                self._ffmpeg_proc = None
+        if self._output_file == self._writer_file and self.frame_count == 0 and self._writer_file and os.path.exists(self._writer_file):
+            # Remove empty files (no frames)
+            os.remove(self._writer_file)
+            self._output_file = None
         # Return the path if we actually wrote a file
         return self._output_file
 
+    def _start_ffmpeg_writer(self) -> None:
+        """Start an ffmpeg subprocess that accepts raw BGR frames via stdin."""
+        cmd = [
+            self._ffmpeg_path,
+            "-y",
+            "-f", "rawvideo",
+            "-pix_fmt", "bgr24",
+            "-s", f"{self._out_w}x{self._out_h}",
+            "-r", str(self.fps),
+            "-i", "-",
+            "-an",
+            "-c:v", "mjpeg",
+            "-qscale:v", "3",
+            self._writer_file,
+        ]
+        try:
+            self._ffmpeg_proc = subprocess.Popen(
+                cmd,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            if self._ffmpeg_proc.stdin is None:
+                raise RuntimeError("Failed to open ffmpeg stdin")
+            print("[Video] Using ffmpeg MJPEG pipe for recording")
+        except FileNotFoundError:
+            print(f"[Video] ERROR: ffmpeg not found at {self._ffmpeg_path}")
+            self._ffmpeg_proc = None
+            self._recording = False
+        except Exception as exc:
+            print(f"[Video] ERROR: Unable to start ffmpeg recorder: {exc}")
+            self._ffmpeg_proc = None
+            self._recording = False
 
