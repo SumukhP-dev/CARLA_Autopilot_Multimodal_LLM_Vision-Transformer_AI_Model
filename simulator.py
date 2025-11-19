@@ -21,6 +21,7 @@ import statistics
 import numpy as np
 from collections import deque
 from dotenv import load_dotenv
+from concurrent.futures import ThreadPoolExecutor
 
 # Load environment variables from .env file
 load_dotenv()
@@ -317,13 +318,20 @@ def main():
     # Start with lower initial speed for safety
     ego_vehicle.apply_ackermann_control(carla.VehicleAckermannControl(speed=3.0, steer=0.0))
 
+    enable_pygame_ui = os.environ.get("ENABLE_PYGAME_UI", "false").lower() == "true"
+    if not enable_pygame_ui:
+        os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+    
     pygame.init()  # initialising
-
-    # Set up the Pygame display
-    size = (640, 480)
-    pygame.display.set_caption("CARLA Manual Control")
-    screen = pygame.display.set_mode(size)
-
+    
+    # Set up the Pygame display (optional)
+    if enable_pygame_ui:
+        size = (640, 480)
+        pygame.display.set_caption("CARLA Manual Control")
+        screen = pygame.display.set_mode(size)
+    else:
+        screen = None
+    
     # Set up the control object and loop until the user exits the script
     clock = pygame.time.Clock()
     done = False
@@ -362,7 +370,6 @@ def main():
     AUDIO_UPDATE_INTERVAL = int(os.environ.get("AUDIO_UPDATE_INTERVAL", "100"))
     last_audio_frame = -AUDIO_UPDATE_INTERVAL  # Initialize to trigger processing on first frame
     current_audio_path = None
-    cached_audio_text = "No audio command available"
     
     # Select initial audio file
     if audio_candidates:
@@ -393,7 +400,7 @@ def main():
     }
     frame_times = deque(maxlen=100)  # For FPS calculation
     last_frame_time = time.time()
-    
+
     def calculate_confidence_interval(data, confidence=0.95):
         """Calculate confidence interval for a dataset"""
         if len(data) < 2:
@@ -618,6 +625,26 @@ def main():
     video_recorder.start_recording()
     print(f"[Video] Recording started - will record for {record_duration} seconds ({record_frames} frames at {video_fps} FPS)")
     
+    # Thread pool for heavy tasks (vision/audio/LLM)
+    task_executor = ThreadPoolExecutor(max_workers=3)
+    task_futures = {'vision': None, 'audio': None, 'llm': None}
+    task_start_times = {}
+    latest_scene_text = "Initializing scene..."
+    latest_audio_text = "Initializing audio..."
+    latest_decision = (5.0, 0.0)
+    llm_min_interval = float(os.environ.get("LLM_MIN_INTERVAL", "6.0"))
+    next_llm_request_time = 0.0
+    
+    # Kick off initial background tasks
+    task_start_times['vision'] = time.time()
+    task_futures['vision'] = task_executor.submit(camera_text_processing.get_scenario_from_image)
+    if current_audio_path and os.path.exists(current_audio_path):
+        print(f"[Audio] Processing initial audio file (async): {current_audio_path}")
+        task_start_times['audio'] = time.time()
+        task_futures['audio'] = task_executor.submit(convert, current_audio_path)
+    else:
+        latest_audio_text = "No audio command available"
+    
     frame_count = 0
     # Use record_frames for 2 minutes, but allow override via environment
     # Default to 2400 frames (2 minutes at 20 FPS) if not specified
@@ -694,58 +721,67 @@ def main():
                 text_of_audio = "Test mode: Random controls"
                 text_of_scene = "Test mode: Random controls enabled"
             else:
-                # Normal mode: use LLM and vision model
                 frame_start_time = time.time()
                 
-                # Vision processing with timing
-                vision_start = time.time()
-                text_of_scene = camera_text_processing.get_scenario_from_image()
-                vision_time = time.time() - vision_start
-                processing_times['vision'].append(vision_time)
+                # Check for completed background tasks
+                if task_futures['vision'] and task_futures['vision'].done():
+                    try:
+                        latest_scene_text = task_futures['vision'].result()
+                        processing_times['vision'].append(time.time() - task_start_times.get('vision', time.time()))
+                    except Exception as e:
+                        print(f"[Vision] Error in background task: {e}")
+                    task_futures['vision'] = None
                 
-                # Audio processing with timing (periodic updates)
-                audio_start = time.time()
-                try:
-                    # Check if we need to update audio (every N frames)
-                    if frame_count - last_audio_frame >= AUDIO_UPDATE_INTERVAL:
-                        # Select new random audio file
-                        if audio_candidates:
-                            current_audio_path = random.choice(audio_candidates)
-                            print(f"[Audio] New audio file selected: {current_audio_path}")
+                if task_futures['audio'] and task_futures['audio'].done():
+                    try:
+                        result_audio = task_futures['audio'].result()
+                        if not result_audio:
+                            result_audio = "Could not understand audio"
+                        latest_audio_text = result_audio
+                        processing_times['audio'].append(time.time() - task_start_times.get('audio', time.time()))
+                    except Exception as e:
+                        latest_audio_text = "Audio processing error"
+                        print(f"[Audio] Error in background task: {e}")
+                    task_futures['audio'] = None
+                
+                if task_futures['llm'] and task_futures['llm'].done():
+                    try:
+                        result_llm = task_futures['llm'].result()
+                        if isinstance(result_llm, (list, tuple)) and len(result_llm) == 2:
+                            latest_decision = (float(result_llm[0]), float(result_llm[1]))
+                        processing_times['llm'].append(time.time() - task_start_times.get('llm', time.time()))
+                    except Exception as e:
+                        print(f"[LLM] Error in background task: {e}")
+                    task_futures['llm'] = None
+                
+                # Ensure vision task is always running
+                if task_futures['vision'] is None:
+                    task_start_times['vision'] = time.time()
+                    task_futures['vision'] = task_executor.submit(camera_text_processing.get_scenario_from_image)
+                
+                # Schedule audio updates periodically
+                if frame_count - last_audio_frame >= AUDIO_UPDATE_INTERVAL and task_futures['audio'] is None:
+                    if audio_candidates:
+                        current_audio_path = random.choice(audio_candidates)
+                        print(f"[Audio] New audio file selected: {current_audio_path}")
+                    else:
+                        fallback = os.path.join(os.getcwd(), "audio.mp3")
+                        if os.path.exists(fallback):
+                            current_audio_path = fallback
+                            print(f"[Audio] Using fallback audio file: {fallback}")
                         else:
-                            # Fallback to root audio.mp3 if directory is empty or missing
-                            fallback = os.path.join(os.getcwd(), "audio.mp3")
-                            if os.path.exists(fallback):
-                                current_audio_path = fallback
-                                print(f"[Audio] Using fallback audio file: {fallback}")
-                            else:
-                                current_audio_path = None
-                        
-                        # Process the new audio file
-                        if current_audio_path and os.path.exists(current_audio_path):
-                            print(f"[Audio] Processing audio file: {current_audio_path}")
-                            cached_audio_text = convert(current_audio_path)
-                            if not cached_audio_text or cached_audio_text == "":
-                                print("[Audio] Audio conversion returned empty, using default text")
-                                cached_audio_text = "Could not understand audio"
-                            last_audio_frame = frame_count
-                        else:
-                            cached_audio_text = "No audio command available"
-                            last_audio_frame = frame_count
+                            current_audio_path = None
                     
-                    # Use cached audio text (no processing needed this frame)
-                    text_of_audio = cached_audio_text
-                    
-                except Exception as e:
-                    print(f"[Audio] Error processing audio file: {e}")
-                    import traceback
-                    traceback.print_exc()
-                    # Use cached text if available, otherwise use error message
-                    text_of_audio = cached_audio_text if 'cached_audio_text' in locals() and cached_audio_text else "Audio processing error"
+                    if current_audio_path and os.path.exists(current_audio_path):
+                        print(f"[Audio] Processing audio file (async): {current_audio_path}")
+                        task_start_times['audio'] = time.time()
+                        task_futures['audio'] = task_executor.submit(convert, current_audio_path)
+                    else:
+                        latest_audio_text = "No audio command available"
+                    last_audio_frame = frame_count
                 
-                audio_time = time.time() - audio_start
-                processing_times['audio'].append(audio_time)
-                
+                text_of_audio = latest_audio_text
+                text_of_scene = latest_scene_text
                 print(f"Audio text: {text_of_audio}")
                 print(f"Scene analysis: {text_of_scene}")
 
@@ -786,16 +822,23 @@ def main():
 
             # Make movements for ego vehicle
             if not test_mode:
-                # Normal mode: use LLM for decision making
-                llm_start = time.time()
-                speed, steer = text_to_instructions_converter.convert(text_of_audio, text_of_scene, speed_mps, steer_angle)
-                llm_time = time.time() - llm_start
-                processing_times['llm'].append(llm_time)
-                
-                # Track total processing time
+                # Use latest LLM decision (may be from previous frame while async task runs)
+                speed, steer = latest_decision
                 total_processing_time = time.time() - frame_start_time
                 processing_times['total'].append(total_processing_time)
             # else: speed and steer are already set from random values above
+            
+            # Queue next LLM request asynchronously
+            if not test_mode and task_futures['llm'] is None and time.time() >= next_llm_request_time:
+                next_llm_request_time = time.time() + llm_min_interval
+                task_start_times['llm'] = time.time()
+                task_futures['llm'] = task_executor.submit(
+                    text_to_instructions_converter.convert,
+                    text_of_audio,
+                    text_of_scene,
+                    speed_mps,
+                    steer_angle
+                )
             
             # Track speed and steering values for statistics
             speed_history.append(speed)
@@ -908,24 +951,31 @@ def main():
             # Continue instead of breaking to see if it's recoverable
 
         # Update the display and check for the quit event
-        try:
-            pygame.display.flip()
-            pygame.display.update()
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    print("[Simulation] Pygame window closed, stopping simulation")
-                    done = True
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        print("[Simulation] ESC key pressed, stopping simulation")
+        if enable_pygame_ui:
+            try:
+                pygame.display.flip()
+                pygame.display.update()
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        print("[Simulation] Pygame window closed, stopping simulation")
                         done = True
-        except Exception as e:
-            print(f"Warning: Pygame display error: {e}")
-            # Don't stop simulation on pygame errors, just continue
+                    elif event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_ESCAPE:
+                            print("[Simulation] ESC key pressed, stopping simulation")
+                            done = True
+            except Exception as e:
+                print(f"Warning: Pygame display error: {e}")
+                # Don't stop simulation on pygame errors, just continue
 
         # Sleep to ensure consistent loop timing
         # Simulation runs at 60 FPS, we capture frames at video FPS (20 FPS) via frame_skip
         clock.tick(simulation_fps)  # Keep simulation at 60 FPS for smooth gameplay
+    
+    # Shut down background executor
+    try:
+        task_executor.shutdown(wait=False, cancel_futures=True)
+    except Exception as e:
+        print(f"[Executor] Warning: failed to shutdown executor: {e}")
     
     # Stop video recording
     if video_recorder.is_recording():
