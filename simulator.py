@@ -213,16 +213,27 @@ def main():
     if vehicle_bp is None:
         print("ERROR: vehicle.audi.etron blueprint not found, trying any vehicle...")
         vehicle_bp = bp_lib.filter("vehicle.*")[0]  # Get first available vehicle
-    
-    ego_vehicle = world.try_spawn_actor(vehicle_bp, spawn_points[79])
-    if ego_vehicle is None:
-        print("ERROR: Failed to spawn vehicle at spawn point 79, trying another point...")
-        # Try a different spawn point
-        for i, spawn_point in enumerate(spawn_points[:10]):  # Try first 10 spawn points
-            ego_vehicle = world.try_spawn_actor(vehicle_bp, spawn_point)
-            if ego_vehicle is not None:
-                print(f"Successfully spawned vehicle at spawn point {i}")
-                break
+
+    # Allow configuring a preferred spawn index via environment variable
+    preferred_index = int(os.environ.get("CAR_START_INDEX", "0"))
+    if preferred_index < 0 or preferred_index >= len(spawn_points):
+        print(f"[Spawn] Preferred index {preferred_index} out of range, resetting to 0")
+        preferred_index = 0
+
+    # Build an ordered list of spawn indices to try, starting with preferred index,
+    # followed by historically good defaults, then all remaining points.
+    fallback_defaults = [79, 60, 40, 20, 0]
+    ordered_indices = [preferred_index]
+    ordered_indices += [idx for idx in fallback_defaults if 0 <= idx < len(spawn_points) and idx not in ordered_indices]
+    ordered_indices += [idx for idx in range(len(spawn_points)) if idx not in ordered_indices]
+
+    ego_vehicle = None
+    for idx in ordered_indices:
+        spawn_point = spawn_points[idx]
+        ego_vehicle = world.try_spawn_actor(vehicle_bp, spawn_point)
+        if ego_vehicle is not None:
+            print(f"[Spawn] Spawned vehicle at index {idx}")
+            break
     
     if ego_vehicle is None:
         print("ERROR: Could not spawn vehicle at any spawn point")
@@ -338,6 +349,33 @@ def main():
     
     # Dashboard backend URL
     dashboard_url = os.environ.get("DASHBOARD_URL", "http://localhost:4000/api/simulations")
+    
+    # Initialize audio selection for periodic updates
+    audio_dir = os.path.join(os.getcwd(), "audio_files")
+    patterns = ["*.mp3", "*.wav", "*.ogg", "*.flac", "*.m4a"]
+    audio_candidates = []
+    if os.path.isdir(audio_dir):
+        for pattern in patterns:
+            audio_candidates.extend(glob.glob(os.path.join(audio_dir, pattern)))
+    
+    # Audio selection interval: change every N frames (default: 100 frames = 5 seconds at 20 FPS)
+    AUDIO_UPDATE_INTERVAL = int(os.environ.get("AUDIO_UPDATE_INTERVAL", "100"))
+    last_audio_frame = -AUDIO_UPDATE_INTERVAL  # Initialize to trigger processing on first frame
+    current_audio_path = None
+    cached_audio_text = "No audio command available"
+    
+    # Select initial audio file
+    if audio_candidates:
+        current_audio_path = random.choice(audio_candidates)
+        print(f"[Audio] Initial audio file selected: {current_audio_path}")
+        print(f"[Audio] Audio will update every {AUDIO_UPDATE_INTERVAL} frames (~{AUDIO_UPDATE_INTERVAL/20:.1f} seconds)")
+    else:
+        fallback = os.path.join(os.getcwd(), "audio.mp3")
+        if os.path.exists(fallback):
+            current_audio_path = fallback
+            print(f"[Audio] Using fallback audio file: {fallback}")
+        else:
+            print("[Audio] No audio files found; will use default mock text")
     
     # Track simulation statistics for dashboard
     collision_count = 0
@@ -665,42 +703,45 @@ def main():
                 vision_time = time.time() - vision_start
                 processing_times['vision'].append(vision_time)
                 
-                # Audio processing with timing
+                # Audio processing with timing (periodic updates)
                 audio_start = time.time()
                 try:
-                    audio_dir = os.path.join(os.getcwd(), "audio_files")
-                    # Supported audio extensions
-                    patterns = ["*.mp3", "*.wav", "*.ogg", "*.flac", "*.m4a"]
-                    candidates = []
-                    if os.path.isdir(audio_dir):
-                        for pattern in patterns:
-                            candidates.extend(glob.glob(os.path.join(audio_dir, pattern)))
-
-                    selected_audio_path = None
-                    if candidates:
-                        selected_audio_path = random.choice(candidates)
-                        print(f"[Audio] Randomly selected audio file: {selected_audio_path}")
-                    else:
-                        # Fallback to root audio.mp3 if directory is empty or missing
-                        fallback = os.path.join(os.getcwd(), "audio.mp3")
-                        if os.path.exists(fallback):
-                            selected_audio_path = fallback
-                            print(f"[Audio] Using fallback audio file: {fallback}")
-
-                    if selected_audio_path is None:
-                        print("[Audio] No audio files found; using default mock text")
-                        text_of_audio = "No audio command available"
-                    else:
-                        print(f"[Audio] Processing audio file: {selected_audio_path}")
-                        text_of_audio = convert(selected_audio_path)
-                        if not text_of_audio or text_of_audio == "":
-                            print("[Audio] Audio conversion returned empty, using default text")
-                            text_of_audio = "Could not understand audio"
+                    # Check if we need to update audio (every N frames)
+                    if frame_count - last_audio_frame >= AUDIO_UPDATE_INTERVAL:
+                        # Select new random audio file
+                        if audio_candidates:
+                            current_audio_path = random.choice(audio_candidates)
+                            print(f"[Audio] New audio file selected: {current_audio_path}")
+                        else:
+                            # Fallback to root audio.mp3 if directory is empty or missing
+                            fallback = os.path.join(os.getcwd(), "audio.mp3")
+                            if os.path.exists(fallback):
+                                current_audio_path = fallback
+                                print(f"[Audio] Using fallback audio file: {fallback}")
+                            else:
+                                current_audio_path = None
+                        
+                        # Process the new audio file
+                        if current_audio_path and os.path.exists(current_audio_path):
+                            print(f"[Audio] Processing audio file: {current_audio_path}")
+                            cached_audio_text = convert(current_audio_path)
+                            if not cached_audio_text or cached_audio_text == "":
+                                print("[Audio] Audio conversion returned empty, using default text")
+                                cached_audio_text = "Could not understand audio"
+                            last_audio_frame = frame_count
+                        else:
+                            cached_audio_text = "No audio command available"
+                            last_audio_frame = frame_count
+                    
+                    # Use cached audio text (no processing needed this frame)
+                    text_of_audio = cached_audio_text
+                    
                 except Exception as e:
-                    print(f"[Audio] Error selecting/processing audio file: {e}")
+                    print(f"[Audio] Error processing audio file: {e}")
                     import traceback
                     traceback.print_exc()
-                    text_of_audio = "Audio processing error"
+                    # Use cached text if available, otherwise use error message
+                    text_of_audio = cached_audio_text if 'cached_audio_text' in locals() and cached_audio_text else "Audio processing error"
                 
                 audio_time = time.time() - audio_start
                 processing_times['audio'].append(audio_time)
@@ -792,18 +833,52 @@ def main():
             
             print(f"Autopilot decision: speed={speed:.2f} m/s, steer={steer:.3f}")
 
-            # Apply control with validated values - using ONLY ackermann_control (not apply_control)
-            ego_vehicle.apply_ackermann_control(carla.VehicleAckermannControl(speed=float(speed), steer=float(steer)))
+            # Apply control with validated values - using waypoint-based navigation for better road following
+            try:
+                # Get current waypoint and next waypoint based on steering direction
+                current_waypoint = world.get_map().get_waypoint(ego_vehicle.get_location())
+                
+                if current_waypoint is None:
+                    # Vehicle might be off-road, use direct control
+                    raise ValueError("Vehicle is off-road, no waypoint available")
+                
+                # Calculate distance to look ahead based on speed (faster = look further ahead)
+                look_ahead_distance = max(5.0, speed * 1.5)  # At least 5m, or 1.5s at current speed
+                
+                # Get waypoint ahead
+                next_waypoints = current_waypoint.next(look_ahead_distance)
+                if not next_waypoints or len(next_waypoints) == 0:
+                    # No waypoint ahead, try shorter distance
+                    next_waypoints = current_waypoint.next(3.0)
+                    if not next_waypoints or len(next_waypoints) == 0:
+                        raise ValueError("No waypoint ahead available")
+                
+                target_waypoint = next_waypoints[0]
+                
+                # Adjust waypoint based on steering direction (steer > 0 = right, steer < 0 = left)
+                if abs(steer) > 0.1:  # Only adjust if steering is significant
+                    # Get adjacent lane waypoint
+                    if steer > 0:  # Steering right
+                        right_lane = target_waypoint.get_right_lane()
+                        if right_lane is not None:
+                            target_waypoint = right_lane
+                    else:  # Steering left
+                        left_lane = target_waypoint.get_left_lane()
+                        if left_lane is not None:
+                            target_waypoint = left_lane
+                
+                # Use Player's controller for waypoint-based navigation
+                # Convert speed from m/s to km/h for the controller (which expects km/h)
+                speed_kmh = speed * 3.6
+                control = player.controller.run_step(speed_kmh, target_waypoint)
+                ego_vehicle.apply_control(control)
+            except Exception as e:
+                # Fallback to direct ackermann control if waypoint navigation fails
+                if frame_count % 30 == 0:  # Only print warning every 30 frames to avoid spam
+                    print(f"Warning: Waypoint navigation failed ({e}), using direct control")
+                ego_vehicle.apply_ackermann_control(carla.VehicleAckermannControl(speed=float(speed), steer=float(steer)))
             
-            # Send periodic updates to dashboard (every 5 frames)
-            if frame_count % 5 == 0:
-                # Calculate safe runs: total frames minus collisions
-                # Each "run" represents 5 frames, so safe_runs = total safe frames / 5
-                safe_runs = max(0, safe_frames // 5)  # Ensure non-negative
-                send_to_dashboard(actual_map_name, collision_count, safe_runs)
-                print(f"[Dashboard] Sent update: {collision_count} collisions, {safe_runs} safe runs (from {safe_frames} safe frames)")
-
-            # Keep moving the spectator to keep up with ego vehicle
+            # Keep moving the spectator to keep up with ego vehicle (update every frame)
             try:
                 spectator = world.get_spectator()
                 transform = carla.Transform(
@@ -813,6 +888,14 @@ def main():
                 spectator.set_transform(transform)
             except Exception as e:
                 print(f"Warning: Failed to update spectator: {e}")
+            
+            # Send periodic updates to dashboard (every 5 frames)
+            if frame_count % 5 == 0:
+                # Calculate safe runs: total frames minus collisions
+                # Each "run" represents 5 frames, so safe_runs = total safe frames / 5
+                safe_runs = max(0, safe_frames // 5)  # Ensure non-negative
+                send_to_dashboard(actual_map_name, collision_count, safe_runs)
+                print(f"[Dashboard] Sent update: {collision_count} collisions, {safe_runs} safe runs (from {safe_frames} safe frames)")
 
         except KeyboardInterrupt:
             print("\nSimulation interrupted by user")

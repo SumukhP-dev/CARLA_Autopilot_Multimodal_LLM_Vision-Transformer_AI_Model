@@ -4,7 +4,20 @@ from collections import deque
 import math
 import numpy as np
 # CARLA will be imported after path setup in main script
+# Import carla when needed - it will be available after simulator.py sets up the path
 from misc import get_speed
+
+def _get_carla():
+    """Get carla module, importing it if necessary"""
+    try:
+        import carla
+        return carla
+    except ImportError:
+        # Try to get it from sys.modules in case it was already imported
+        import sys
+        if 'carla' in sys.modules:
+            return sys.modules['carla']
+        raise ImportError("carla module not available. Make sure CARLA path is set up before using VehiclePIDController.")
 
 
 class VehiclePIDController:
@@ -70,6 +83,7 @@ class VehiclePIDController:
 
         acceleration = self._lon_controller.run_step(target_speed)
         current_steering = self._lat_controller.run_step(waypoint)
+        carla = _get_carla()
         control = carla.VehicleControl()
         if acceleration >= 0.0:
             control.throttle = min(acceleration, self.max_throt)
@@ -235,6 +249,7 @@ class PIDLateralController:
         # Get the vector vehicle-target_wp
         if self._offset != 0:
             # Displace the wp to the side
+            carla = _get_carla()
             w_tran = waypoint.transform
             r_vec = w_tran.get_right_vector()
             w_loc = w_tran.location + carla.Location(

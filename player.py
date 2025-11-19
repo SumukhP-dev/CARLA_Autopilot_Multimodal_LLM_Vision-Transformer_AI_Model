@@ -18,6 +18,18 @@ import numpy as np
 import random
 from controller import VehiclePIDController
 
+def _get_carla():
+    """Get carla module, importing it if necessary"""
+    try:
+        import carla
+        return carla
+    except ImportError:
+        # Try to get it from sys.modules in case it was already imported
+        import sys
+        if 'carla' in sys.modules:
+            return sys.modules['carla']
+        raise ImportError("carla module not available. Make sure CARLA path is set up before using Player.")
+
 VEHICLE_VEL = 5
 class Player:
     def __init__(self, world, ego_vehicle, vel_ref=VEHICLE_VEL, max_throt=0.75, max_brake=0.3, max_steer=0.8):
@@ -57,6 +69,7 @@ class Player:
     def go2Waypoint(self, waypoint, draw_waypoint=True, threshold=0.3):
         if draw_waypoint:
             # print(" I draw")
+            carla = _get_carla()
             self.world.debug.draw_string(waypoint.transform.location, 'O', draw_shadow=False,
                                          color=carla.Color(r=255, g=0, b=0), life_time=10.0,
                                          persistent_lines=True)
@@ -104,6 +117,7 @@ class Player:
             self.update_spectator()
 
     def update_spectator(self):
+        carla = _get_carla()
         new_yaw = math.radians(self.vehicle.get_transform().rotation.yaw)
         spectator_transform = self.vehicle.get_transform()
         spectator_transform.location += carla.Location(x=-10 * math.cos(new_yaw), y=-10 * math.sin(new_yaw), z=5.0)
@@ -115,6 +129,7 @@ class Player:
         current_pos = self.vehicle.get_location()
 
     def draw_waypoints(self):
+        carla = _get_carla()
         for waypoint in self.waypointsList:
             self.world.debug.draw_string(waypoint.transform.location, 'O', draw_shadow=False,
                                          color=carla.Color(r=255, g=0, b=0), life_time=10.0,
