@@ -35,5 +35,3 @@ vision_transformer_model/model/*.tflite
 
 # CARLA caches
 **/Carla/Maps/**
-
-recordings/
