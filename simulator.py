@@ -187,18 +187,19 @@ def main():
     print(f"[Map] Active map: {actual_map_name}")
     spectator = world.get_spectator()
 
-    # I have changed the weather to a clear noon.
+    # Configure weather from environment variables or use defaults
     weather = carla.WeatherParameters(
-        cloudiness=0.0,
-        precipitation=0.0,
-        sun_altitude_angle=10.0,
-        sun_azimuth_angle=90.0,
-        precipitation_deposits=0.0,
-        wind_intensity=0.0,
-        fog_density=0.0,
-        wetness=0.0,
+        cloudiness=float(os.environ.get("WEATHER_CLOUDINESS", "0.0")),
+        precipitation=float(os.environ.get("WEATHER_PRECIPITATION", "0.0")),
+        sun_altitude_angle=float(os.environ.get("WEATHER_SUN_ALTITUDE_ANGLE", "90.0")),
+        sun_azimuth_angle=float(os.environ.get("WEATHER_SUN_AZIMUTH_ANGLE", "0.0")),
+        precipitation_deposits=float(os.environ.get("WEATHER_PRECIPITATION_DEPOSITS", "0.0")),
+        wind_intensity=float(os.environ.get("WEATHER_WIND_INTENSITY", "0.0")),
+        fog_density=float(os.environ.get("WEATHER_FOG_DENSITY", "0.0")),
+        wetness=float(os.environ.get("WEATHER_WETNESS", "0.0")),
     )
     world.set_weather(weather)
+    print(f"[Weather] Set weather: cloudiness={weather.cloudiness}, precipitation={weather.precipitation}, fog={weather.fog_density}")
 
     # First let's get the blueprint library and the spawn points for our world.
     # Depending on your Carla version and the map chosen, you get different actors
@@ -575,8 +576,24 @@ def main():
     
     print("Starting autopilot simulation...")
     
+    # Check evaluation mode
+    eval_mode = os.environ.get("EVAL_MODE", "multimodal")
+    vision_enabled = os.environ.get("VISION_ENABLED", "true").lower() == "true"
+    audio_enabled = os.environ.get("AUDIO_ENABLED", "true").lower() == "true"
+    use_carla_autopilot = os.environ.get("USE_CARLA_AUTOPILOT", "false").lower() == "true"
+    
+    print(f"[Evaluation] Mode: {eval_mode}")
+    print(f"[Evaluation] Vision enabled: {vision_enabled}")
+    print(f"[Evaluation] Audio enabled: {audio_enabled}")
+    print(f"[Evaluation] CARLA autopilot: {use_carla_autopilot}")
+    
     # Check if test mode is enabled (random controls for fast testing)
     test_mode = os.environ.get("TEST_MODE", "false").lower() == "true"
+    
+    # Setup CARLA autopilot if baseline mode
+    if use_carla_autopilot:
+        ego_vehicle.set_autopilot(True)
+        print("[Baseline] Using CARLA's built-in autopilot")
     
     # Configure simulation duration based on desired frame budget
     run_duration_seconds = int(os.environ.get("RUN_DURATION_SECONDS", "120"))
@@ -714,13 +731,15 @@ def main():
                         print(f"[LLM] Error in background task: {e}")
                     task_futures['llm'] = None
                 
-                # Ensure vision task is always running
-                if task_futures['vision'] is None:
+                # Ensure vision task is always running (if enabled)
+                if vision_enabled and task_futures['vision'] is None:
                     task_start_times['vision'] = time.time()
                     task_futures['vision'] = task_executor.submit(camera_text_processing.get_scenario_from_image)
+                elif not vision_enabled:
+                    latest_scene_text = "Vision disabled (ablation study)"
                 
-                # Schedule audio updates periodically
-                if frame_count - last_audio_frame >= AUDIO_UPDATE_INTERVAL and task_futures['audio'] is None:
+                # Schedule audio updates periodically (if enabled)
+                if audio_enabled and frame_count - last_audio_frame >= AUDIO_UPDATE_INTERVAL and task_futures['audio'] is None:
                     if audio_candidates:
                         current_audio_path = random.choice(audio_candidates)
                         print(f"[Audio] New audio file selected: {current_audio_path}")
@@ -739,9 +758,11 @@ def main():
                     else:
                         latest_audio_text = "No audio command available"
                     last_audio_frame = frame_count
+                elif not audio_enabled:
+                    latest_audio_text = "Audio disabled (ablation study)"
                 
-                text_of_audio = latest_audio_text
-                text_of_scene = latest_scene_text
+                text_of_audio = latest_audio_text if audio_enabled else "Audio disabled"
+                text_of_scene = latest_scene_text if vision_enabled else "Vision disabled"
                 print(f"Audio text: {text_of_audio}")
                 print(f"Scene analysis: {text_of_scene}")
 
@@ -754,7 +775,12 @@ def main():
             steer_angle = current_control.steer
 
             # Make movements for ego vehicle
-            if not test_mode:
+            if use_carla_autopilot:
+                # CARLA autopilot handles control - just track metrics
+                current_control = ego_vehicle.get_control()
+                speed = speed_mps
+                steer = current_control.steer
+            elif not test_mode:
                 # Use latest LLM decision (may be from previous frame while async task runs)
                 speed, steer = latest_decision
                 total_processing_time = time.time() - frame_start_time
@@ -926,6 +952,44 @@ def main():
     # Send final data to dashboard
     send_to_dashboard(actual_map_name, collision_count, safe_runs)
     print(f"[Dashboard] Final update sent: {collision_count} collisions, {safe_runs} safe runs")
+    
+    # Output structured evaluation results if in evaluation mode
+    # Always save results when EVAL_MODE is set (for all modes including multimodal)
+    if os.environ.get("EVAL_MODE"):
+        eval_results = {
+            "map": actual_map_name,
+            "weather": {
+                "cloudiness": weather.cloudiness,
+                "precipitation": weather.precipitation,
+                "fog_density": weather.fog_density,
+                "sun_altitude_angle": weather.sun_altitude_angle,
+            },
+            "mode": eval_mode,
+            "vision_enabled": vision_enabled,
+            "audio_enabled": audio_enabled,
+            "use_carla_autopilot": use_carla_autopilot,
+            "metrics": {
+                "total_frames": frame_count,
+                "collisions": collision_count,
+                "safe_frames": safe_frames,
+                "safe_runs": safe_runs,
+                "safety_rate": (safe_runs / (collision_count + safe_runs) * 100) if (collision_count + safe_runs) > 0 else 0,
+                "elapsed_time": elapsed_time,
+                "avg_fps": frame_count / elapsed_time if elapsed_time > 0 else 0,
+                "speed_stats": calculate_statistics_summary([float(s) for s in list(speed_history)]) if speed_history else {},
+                "steering_stats": calculate_statistics_summary([float(s) for s in list(steering_history)]) if steering_history else {},
+            }
+        }
+        
+        # Output to file for evaluation runner
+        eval_output_file = os.environ.get("EVAL_OUTPUT_FILE", "eval_result.json")
+        try:
+            import json
+            with open(eval_output_file, "w") as f:
+                json.dump(eval_results, f, indent=2)
+            print(f"[Evaluation] Results saved to {eval_output_file}")
+        except Exception as e:
+            print(f"[Evaluation] Failed to save results: {e}")
     
     # Cleanup: destroy camera sensor before exiting
     print("\nCleaning up resources...")

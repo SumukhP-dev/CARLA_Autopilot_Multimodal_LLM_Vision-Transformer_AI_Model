@@ -1,0 +1,48 @@
+{
+  "map": "Carla/Maps/Town05",
+  "weather": {
+    "cloudiness": 80.0,
+    "precipitation": 50.0,
+    "fog_density": 0.0,
+    "sun_altitude_angle": 30.0
+  },
+  "mode": "baseline",
+  "vision_enabled": true,
+  "audio_enabled": true,
+  "use_carla_autopilot": true,
+  "metrics": {
+    "total_frames": 46,
+    "collisions": 5,
+    "safe_frames": 25,
+    "safe_runs": 5,
+    "safety_rate": 50.0,
+    "elapsed_time": 671.047726392746,
+    "avg_fps": 0.06854952068353698,
+    "speed_stats": {
+      "mean": 4.686,
+      "std": 2.9,
+      "variance": 8.409,
+      "min": 0.073,
+      "max": 8.047,
+      "median": 4.741,
+      "q25": 3.146,
+      "q75": 7.833,
+      "ci_lower": 3.839,
+      "ci_upper": 5.534,
+      "sample_size": 46
+    },
+    "steering_stats": {
+      "mean": 0.246,
+      "std": 0.275,
+      "variance": 0.075,
+      "min": -0.026,
+      "max": 0.8,
+      "median": 0.096,
+      "q25": 0.0,
+      "q75": 0.464,
+      "ci_lower": 0.165,
+      "ci_upper": 0.326,
+      "sample_size": 46
+    }
+  }
+}

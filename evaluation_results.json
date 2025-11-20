@@ -1,0 +1,172 @@
+{
+  "timestamp": "2025-11-19T17:02:05.147158",
+  "config": {
+    "frames_per_test": 500,
+    "maps": [
+      "Town03",
+      "Town05"
+    ],
+    "weathers": [
+      "Clear",
+      "Rain"
+    ],
+    "modes": [
+      "multimodal",
+      "vision_only",
+      "baseline"
+    ],
+    "note": "Quick evaluation - subset of full test suite"
+  },
+  "results": [
+    {
+      "success": false,
+      "error": "Timeout",
+      "map": "Town03",
+      "weather": "Clear",
+      "mode": "multimodal"
+    },
+    {
+      "success": false,
+      "error": "Timeout",
+      "map": "Town03",
+      "weather": "Clear",
+      "mode": "vision_only"
+    },
+    {
+      "success": false,
+      "error": "Timeout",
+      "map": "Town03",
+      "weather": "Clear",
+      "mode": "baseline"
+    },
+    {
+      "success": false,
+      "error": "Timeout",
+      "map": "Town03",
+      "weather": "Rain",
+      "mode": "multimodal"
+    },
+    {
+      "success": false,
+      "error": "Timeout",
+      "map": "Town03",
+      "weather": "Rain",
+      "mode": "vision_only"
+    },
+    {
+      "success": false,
+      "error": "Timeout",
+      "map": "Town03",
+      "weather": "Rain",
+      "mode": "baseline"
+    },
+    {
+      "success": false,
+      "error": "Timeout",
+      "map": "Town05",
+      "weather": "Clear",
+      "mode": "multimodal"
+    },
+    {
+      "success": false,
+      "error": "Timeout",
+      "map": "Town05",
+      "weather": "Clear",
+      "mode": "vision_only"
+    },
+    {
+      "success": false,
+      "error": "Timeout",
+      "map": "Town05",
+      "weather": "Clear",
+      "mode": "baseline"
+    },
+    {
+      "success": false,
+      "error": "Timeout",
+      "map": "Town05",
+      "weather": "Rain",
+      "mode": "multimodal"
+    },
+    {
+      "success": true,
+      "elapsed_time": 1246.0468077659607,
+      "frames_processed": 500,
+      "map": "Town05",
+      "weather": "Rain",
+      "mode": "vision_only",
+      "total_frames": 101,
+      "collisions": 0,
+      "safe_frames": 101,
+      "safe_runs": 20,
+      "safety_rate": 100.0,
+      "avg_fps": 0.08105634505102025,
+      "speed_stats": {
+        "mean": 0.173,
+        "std": 0.702,
+        "variance": 0.493,
+        "min": 0.0,
+        "max": 3.335,
+        "median": 0.0,
+        "q25": 0.0,
+        "q75": 0.0,
+        "ci_lower": 0.036,
+        "ci_upper": 0.311,
+        "sample_size": 101
+      },
+      "steering_stats": {
+        "mean": 2.840008037504884e+32,
+        "std": 1.0428340158848904e+32,
+        "variance": 1.087502784686608e+64,
+        "min": -0.0,
+        "max": 3.2229304695280143e+32,
+        "median": 3.2229304695280143e+32,
+        "q25": 3.2229304695280143e+32,
+        "q75": 3.2229304695280143e+32,
+        "ci_lower": 2.6356125703914452e+32,
+        "ci_upper": 3.0444035046183226e+32,
+        "sample_size": 101
+      }
+    },
+    {
+      "success": true,
+      "elapsed_time": 671.047726392746,
+      "frames_processed": 500,
+      "map": "Town05",
+      "weather": "Rain",
+      "mode": "baseline",
+      "total_frames": 46,
+      "collisions": 5,
+      "safe_frames": 25,
+      "safe_runs": 5,
+      "safety_rate": 50.0,
+      "avg_fps": 0.06854952068353698,
+      "speed_stats": {
+        "mean": 4.686,
+        "std": 2.9,
+        "variance": 8.409,
+        "min": 0.073,
+        "max": 8.047,
+        "median": 4.741,
+        "q25": 3.146,
+        "q75": 7.833,
+        "ci_lower": 3.839,
+        "ci_upper": 5.534,
+        "sample_size": 46
+      },
+      "steering_stats": {
+        "mean": 0.246,
+        "std": 0.275,
+        "variance": 0.075,
+        "min": -0.026,
+        "max": 0.8,
+        "median": 0.096,
+        "q25": 0.0,
+        "q75": 0.464,
+        "ci_lower": 0.165,
+        "ci_upper": 0.326,
+        "sample_size": 46
+      }
+    }
+  ]
+}
