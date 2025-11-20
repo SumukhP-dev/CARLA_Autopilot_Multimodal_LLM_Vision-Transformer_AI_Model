@@ -22,12 +22,12 @@ The system generates driving instructions (speed and steering) by analyzing both
 ### High-Level System Architecture
 
 ```
-                    ┌─────────────────────────────┐
-                    │    CARLA Simulator          │
-                    │  ┌──────────┐ ┌──────────┐  │
+                    ┌────────────────────────────┐
+                    │    CARLA Simulator         │
+                    │  ┌─────────┐ ┌──────────┐  │
                     │  │ Vehicle │ │ Camera   │  │
                     │  │ Control │ │ Sensor   │  │
-                    │  └────┬────┘ └────┬────┘  │
+                    │  └────┬────┘ └────┬─────┘  │
                     └───────┼───────────┼────────┘
                             │           │
                     ┌───────▼───────┐   │
@@ -40,34 +40,34 @@ The system generates driving instructions (speed and steering) by analyzing both
                             │   │  (audio.mp3)  │
                             │   └───────┬───────┘
                             │           │
-            ┌───────────────┴───────────┴───────────────┐
-            │   Multimodal Processing Pipeline          │
-            │                                           │
-            │  ┌──────────────┐    ┌──────────────┐    │
-            │  │ Vision       │    │ Audio        │    │
-            │  │ Transformer  │    │ Processing   │    │
-            │  │              │    │              │    │
-            │  │ Image→Text   │    │ Audio→Text   │    │
-            │  │ Scene Desc.  │    │ Speech Rec.  │    │
-            │  └──────┬───────┘    └──────┬───────┘    │
-            │         │                   │            │
-            │         └─────────┬─────────┘            │
-            │                   │                      │
-            │         ┌─────────▼─────────┐            │
-            │         │  Gemini LLM       │            │
-            │         │  Decision Engine  │            │
-            │         └─────────┬─────────┘            │
-            │                   │                      │
-            │         ┌─────────▼─────────┐            │
-            │         │  JSON Output      │            │
-            │         │  {speed, steer}   │            │
-            │         └─────────┬─────────┘            │
-            └───────────────────┼──────────────────────┘
-                                │
-                      ┌─────────▼─────────┐
-                      │  Vehicle Control  │
-                      │  Speed/Steering   │
-                      └───────────────────┘
+            ┌───────────────┴───────────┴──────────────┐
+            │   Multimodal Processing Pipeline         │
+            │                                          │
+            │  ┌──────────────┐      ┌──────────────┐  │
+            │  │ Vision       │      │ Audio        │  │
+            │  │ Transformer  │      │ Processing   │  │
+            │  │              │      │              │  │
+            │  │ Image→Text   │      │ Audio→Text   │  │
+            │  │ Scene Desc.  │      │ Speech Rec.  │  │
+            │  └──────┬───────┘      └──────┬───────┘  │
+            │         │                     │          │
+            │         └───────────┬─────────┘          │
+            │                     │                    │
+            │         ┌───────────▼───────────────┐    │
+            │         │  Gemini LLM               │    │
+            │         │  Decision Engine          │    │
+            │         └─────────────┬─────────────┘    │
+            │                       │                  │
+            │         ┌─────────────▼─────────────┐    │
+            │         │  JSON Output              │    │
+            │         │  {speed, steer}           │    │
+            │         └─────────────┬─────────────┘    │
+            └───────────────────────┼──────────────────┘
+                                    │
+                          ┌─────────▼─────────┐
+                          │  Vehicle Control  │
+                          │  Speed/Steering   │
+                          └───────────────────┘
 ```
 
 ### Component Details
@@ -856,14 +856,31 @@ CARLA_Autopilot_LLM/
 
 ### Screenshots
 
-![Screenshot Placeholder](screenshots/0000.jpg)
-![Screenshot Placeholder](screenshots/0434.jpg)
-![Screenshot Placeholder](screenshots/dashboard-1.png)
-![Screenshot Placeholder](screenshots/dashboard-2.png)
+**Dashboard Views:**
+
+![Dashboard Main View](screenshots/dashboard-main.png)
+_Main dashboard showing real-time simulation metrics and safety statistics_
+
+![Dashboard Metrics](screenshots/dashboard-metrics.png)
+_Detailed metrics view with collision data and performance statistics_
+
+**Testing Results:**
+
+![Jasmine Testing Results](screenshots/jasmine_testing_results.png)
+_Frontend unit testing results using Jasmine/Karma_
 
 ### Video Demo
 
-_[Add link to demo video here when available]_
+Watch the system in action! This demo showcases:
+
+- Real-time multimodal AI processing (Vision Transformer + Audio + LLM)
+- Live dashboard updates with simulation metrics
+- Autonomous vehicle control in CARLA simulator
+- Collision detection and safety monitoring
+
+[![CARLA Autopilot Multimodal System Demo](https://img.youtube.com/vi/0Z5Qliv1HFI/0.jpg)](https://www.youtube.com/watch?v=0Z5Qliv1HFI)
+
+**Watch on YouTube**: [https://youtu.be/0Z5Qliv1HFI](https://youtu.be/0Z5Qliv1HFI)
 
 ---
 
