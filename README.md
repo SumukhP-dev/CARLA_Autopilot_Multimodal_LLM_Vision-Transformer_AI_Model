@@ -4,6 +4,67 @@ A sophisticated autonomous driving system that integrates Vision Transformer mod
 
 ---
 
+## 📑 Table of Contents
+
+- [Project Overview](#-project-overview)
+- [Architecture](#️-architecture)
+  - [High-Level System Architecture](#high-level-system-architecture)
+  - [Component Details](#component-details)
+  - [Data Flow](#data-flow)
+  - [Design Decisions](#design-decisions)
+  - [Performance Characteristics](#performance-characteristics)
+- [Methodology](#-methodology)
+  - [Approach](#approach)
+  - [Vision Transformer Architecture](#vision-transformer-architecture)
+- [Results & Evaluation](#-results--evaluation)
+  - [Comprehensive Evaluation Framework](#comprehensive-evaluation-framework)
+  - [Running Comprehensive Evaluation](#running-comprehensive-evaluation)
+  - [Quantitative Results](#quantitative-results)
+  - [Baseline Comparison](#baseline-comparison)
+  - [Ablation Studies](#ablation-studies)
+  - [Performance by Map](#performance-by-map)
+  - [Performance by Weather](#performance-by-weather)
+  - [Statistical Analysis](#statistical-analysis)
+  - [Key Capabilities](#key-capabilities)
+  - [Limitations & Future Work](#limitations--future-work)
+  - [Strengthening for Grad School Applications](#strengthening-for-grad-school-applications)
+  - [Extension Points](#extension-points)
+- [Setup Instructions](#-setup-instructions)
+  - [Prerequisites](#prerequisites)
+  - [Step 1: Clone Repository](#step-1-clone-repository)
+  - [Step 2: Install Python Dependencies](#step-2-install-python-dependencies)
+  - [Step 3: Install FFmpeg](#step-3-install-ffmpeg)
+  - [Step 4: Configure Environment Variables](#step-4-configure-environment-variables)
+  - [Step 5: Start CARLA Simulator](#step-5-start-carla-simulator)
+  - [Step 6: Run the Simulation](#step-6-run-the-simulation)
+  - [Step 7: (Optional) Start Dashboard](#step-7-optional-start-dashboard)
+- [Project Structure](#-project-structure)
+- [Demo & Screenshots](#-demo--screenshots)
+  - [Screenshots](#screenshots)
+  - [Video Demo](#video-demo)
+- [Important Links](#-important-links)
+- [Research Paper](#-research-paper)
+- [Tech Stack](#️-tech-stack)
+- [Features](#-features)
+  - [Core Features](#core-features)
+  - [Recent Improvements](#recent-improvements)
+  - [What You'll See](#what-youll-see)
+- [Testing](#-testing)
+  - [Running Tests](#running-tests)
+  - [Manual Testing](#manual-testing)
+- [Contributing](#-contributing)
+- [License](#-license)
+- [Author](#-author)
+- [Acknowledgments](#-acknowledgments)
+- [References](#-references)
+- [Troubleshooting](#️-troubleshooting)
+  - [CARLA Import Errors](#carla-import-errors)
+  - [Model Loading Errors](#model-loading-errors)
+  - [Audio Processing Errors](#audio-processing-errors)
+  - [Dashboard Connection Issues](#dashboard-connection-issues)
+
+---
+
 ## 🎯 Project Overview
 
 This project demonstrates a **multimodal AI approach** to autonomous driving by combining:
@@ -1114,135 +1175,3 @@ This is a Windows-specific DLL loading issue. Solutions:
 - **No data displayed**: Check if simulator is sending data to backend (check simulator console logs)
 
 For more details, open an issue on GitHub.
-
----
-
-## 📊 Project Assessment & Grade
-
-### Overall Project Grade: **A- (90/100)**
-
-### Strengths
-
-1. **Comprehensive Architecture (25/25)**
-
-   - ✅ Well-designed multimodal pipeline integrating Vision Transformer, speech recognition, and LLM
-   - ✅ Clear separation of concerns with modular components
-   - ✅ Professional system architecture documentation
-   - ✅ Custom Vision Transformer implementation with CARLA-specific training
-
-2. **Technical Implementation (22/25)**
-
-   - ✅ Functional multimodal AI system with real-time processing
-   - ✅ Integration of multiple complex systems (CARLA, TensorFlow, Gemini API)
-   - ✅ Robust error handling and fallback mechanisms
-   - ⚠️ Performance could be improved (90% safety vs baseline 100%)
-   - ⚠️ Some API quota limitations encountered during testing
-
-3. **Evaluation Framework (20/20)**
-
-   - ✅ Comprehensive evaluation framework with multiple test configurations
-   - ✅ Ablation studies (vision-only, multimodal, baseline)
-   - ✅ Fast evaluation option for quick testing
-   - ✅ Results analysis and reporting tools
-   - ✅ Actual quantitative results documented
-
-4. **Documentation (18/20)**
-
-   - ✅ Excellent README with detailed architecture, setup, and troubleshooting
-   - ✅ Clear code organization and comments
-   - ✅ Evaluation results documented with actual numbers
-   - ⚠️ Some sections still reference "expected values" that could be updated
-   - ⚠️ Research paper mentioned but not fully detailed
-
-5. **Code Quality & Best Practices (5/10)**
-   - ✅ Modular design with clear file structure
-   - ✅ Environment variable configuration
-   - ✅ Error handling and logging
-   - ⚠️ Some hardcoded paths (CARLA paths)
-   - ⚠️ Limited unit tests
-   - ⚠️ Could benefit from more comprehensive testing
-
-### Areas for Improvement
-
-1. **Performance Optimization**
-
-   - Current multimodal system achieves 90% safety rate vs baseline 100%
-   - Consider fine-tuning Vision Transformer model
-   - Optimize LLM prompt engineering for better decision-making
-   - Reduce latency in decision pipeline
-
-2. **Testing Coverage**
-
-   - Add unit tests for individual components
-   - Expand evaluation to more maps and weather conditions
-   - Include edge case testing
-   - Add integration tests
-
-3. **Documentation**
-
-   - Update all "expected values" sections with actual results
-   - Complete research paper with full methodology
-   - Add more detailed API documentation
-   - Include performance benchmarks
-
-4. **Code Refactoring**
-   - Remove hardcoded paths, use configuration files
-   - Add type hints throughout codebase
-   - Refactor large functions into smaller, testable units
-   - Add comprehensive logging framework
-
-### Research Contribution
-
-**Novel Aspects:**
-
-- Multimodal fusion of Vision Transformer and speech recognition for autonomous driving
-- LLM-based decision-making in real-time driving scenarios
-- Custom Vision Transformer trained on CARLA-specific data
-- Comprehensive ablation studies demonstrating audio contribution (+35.83% improvement)
-
-**Research Potential:**
-
-- Strong foundation for academic publication
-- Clear demonstration of multimodal benefits
-- Well-structured evaluation framework
-- Reproducible experimental setup
-
-### Recommendations for Enhancement
-
-1. **Short-term (1-2 weeks)**
-
-   - Complete full evaluation suite across all maps/weathers
-   - Update all documentation with actual results
-   - Add more unit tests
-   - Fix any remaining hardcoded paths
-
-2. **Medium-term (1-2 months)**
-
-   - Improve model performance to match/exceed baseline
-   - Add multi-agent scenarios
-   - Implement offline speech recognition option
-   - Expand testing coverage
-
-3. **Long-term (3-6 months)**
-   - Publish research paper
-   - Add LiDAR/radar sensor integration
-   - Real-time model fine-tuning
-   - Deploy as open-source package
-
-### Final Comments
-
-This is a **well-executed project** that demonstrates strong technical skills in:
-
-- Deep learning (Vision Transformers)
-- Multimodal AI systems
-- Real-time simulation and control
-- Software engineering best practices
-
-The project shows clear research potential and could be strengthened for grad school applications with:
-
-- More comprehensive evaluation results
-- Performance improvements to match baseline
-- Complete research paper
-- Expanded testing coverage
-
-**Overall Assessment**: Excellent work with room for optimization. The multimodal approach shows promise, and the evaluation framework provides a solid foundation for further research.
